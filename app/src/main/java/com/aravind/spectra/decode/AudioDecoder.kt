@@ -23,6 +23,7 @@ import java.nio.ByteOrder
  * float array afterwards — that older approach briefly held two full
  * copies of the whole track's decoded audio in memory at once, which is
  * exactly the kind of thing that runs a long/high-res file out of heap.
+ * See CHANGELOG.md for the full memory-hardening history.
  */
 object AudioDecoder {
 

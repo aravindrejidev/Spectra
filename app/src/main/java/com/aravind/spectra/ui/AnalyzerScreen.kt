@@ -22,7 +22,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -170,6 +169,24 @@ private fun FileChip(name: String, size: Long, onReset: () -> Unit) {
     }
 }
 
+/** Standard two-pass downsampled bitmap decode. Some FLAC rips embed very
+ *  large cover scans (several thousand px per side); decoding that at full
+ *  resolution for a 72dp thumbnail can allocate tens of MB for one bitmap,
+ *  which stacks with the audio already decoded in memory and can tip a
+ *  device into OOM on a longer track. See CHANGELOG.md. */
+private fun decodeSampledBitmap(bytes: ByteArray, reqSizePx: Int): android.graphics.Bitmap? {
+    val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
+    var sampleSize = 1
+    var w = boundsOptions.outWidth
+    var h = boundsOptions.outHeight
+    while (w / 2 >= reqSizePx && h / 2 >= reqSizePx) {
+        w /= 2; h /= 2; sampleSize *= 2
+    }
+    val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
+}
+
 @Composable
 private fun MetadataCardContent(s: UiState.Success) {
     SectionCard("Metadata") {
@@ -215,19 +232,6 @@ private fun MetadataCardContent(s: UiState.Success) {
         s.tags.genre?.let { KeyValueRow("Genre", it) }
         s.tags.bitrateBps?.let { KeyValueRow("Tag bitrate", "${it / 1000} kbps") }
     }
-}
-
-private fun decodeSampledBitmap(bytes: ByteArray, reqSizePx: Int): android.graphics.Bitmap? {
-    val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
-    var sampleSize = 1
-    var w = boundsOptions.outWidth
-    var h = boundsOptions.outHeight
-    while (w / 2 >= reqSizePx && h / 2 >= reqSizePx) {
-        w /= 2; h /= 2; sampleSize *= 2
-    }
-    val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
 }
 
 @Composable

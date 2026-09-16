@@ -1,100 +1,103 @@
-# Spectra (Android)
+# Spectra
 
-Native rewrite of the Spectra audio analyzer: pick a track, get a spectrogram
-plus a full technical report (peak/RMS/dynamic range/clipping, spectral
-cutoff / "fake lossless" detection).
+![Build](https://github.com/gh9aravind/SpectraPro-mobile/actions/workflows/build.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Platform](https://img.shields.io/badge/platform-Android-3DDC84)
 
-## Status: Phase 1 (confirmed working on-device, memory-hardened)
+**Upload a track. See exactly what's really in it.**
 
-Confirmed building and successfully analyzing FLAC files end-to-end on a
-real device. One round of fixes since the first working build:
+Spectra is a native Android app that takes any audio file and gives you a
+full technical breakdown: a spectrogram, peak/RMS/dynamic range, clipping
+detection, and a spectral-cutoff heuristic that flags **"fake lossless"**
+files — tracks tagged as FLAC/lossless that were actually upscaled from a
+lossy source (a common issue with files pulled from unofficial sources).
 
-- **Streaming spectrogram computation.** The DSP core used to hold every
-  STFT frame of the *entire* track in memory before downsampling for
-  display — fine for a 3-minute song, but a 15+ minute file could need
-  well over a gigabyte just for that intermediate array. It now folds
-  each frame directly into the small display buckets and discards it,
-  so peak memory no longer scales with track length. Verified this gives
-  bit-identical results to the old approach on the same test suite, and
-  added a 20-minute synthetic-track test to confirm it no longer explodes.
-- **No more double-buffered PCM.** The decoder used to accumulate decoded
-  audio as a list of chunks, then copy that into a second, separate float
-  array — briefly holding two full copies of the track in memory. It now
-  writes directly into one growable buffer per channel.
-- **20-minute cap with a clear message.** Even with both fixes above, a
-  genuinely long file's raw decoded PCM (unavoidably ~23MB/minute/channel
-  at 48kHz) can still be too much for a phone's heap. Rather than risk an
-  OOM crash, files longer than 20 minutes now fail with a clear,
-  in-app message instead of crashing outright. If you need to analyze
-  long DJ mixes/mixtapes routinely, the real fix is decoding straight
-  into the streaming analyzer without ever buffering the whole track —
-  a bigger change, worth doing as its own follow-up if this comes up.
-- **Unsupported codecs (e.g. ALAC) fail clearly** instead of crashing —
-  `MediaCodec.createDecoderByType()` throwing now surfaces as a normal
-  in-app error card.
-- `android:largeHeap="true"` added as a safety margin on top of all of
-  the above.
+Everything runs **on-device**. No file is ever uploaded anywhere — the app
+doesn't even request network access.
 
-**What's implemented:**
-- Jetpack Compose UI (dark theme, matches the earlier web version's look)
-- File picking via Storage Access Framework (`OpenDocument`)
-- Metadata via `MediaMetadataRetriever` — title/artist/album/genre/year/
-  track/disc/bitrate/duration/cover art
-- Decode via Android's built-in `MediaExtractor` + `MediaCodec` — covers
-  every format Android guarantees: AAC, MP3, FLAC, Vorbis, Opus, WAV/PCM
-- Spectrogram (STFT), peak/RMS/dynamic range, clipping detection, and the
-  spectral-cutoff "fake lossless" heuristic — pure-Kotlin DSP core in
-  `dsp/SpectrogramAnalyzer.kt`, ported from the web version's `worker.js`
-  and cross-checked against it with matching synthetic-signal tests
-  (same sine/noise/clipping test cases, same results to 3+ decimal places)
+## Features
 
-**Deliberately deferred to Phase 2** (see chat for the reasoning):
-- **ALAC support.** Stock `MediaCodec` has no guaranteed ALAC decoder.
-  Plan: add [`org.jellyfin.media3:media3-ffmpeg-decoder`](https://github.com/jellyfin/media3-ffmpeg-decoder)
-  as a Gradle dependency (a prebuilt AAR — no NDK build step needed) and
-  wire it in as the decode path for formats `MediaCodec` can't handle.
-  Commented-out dependency lines are already left in `app/build.gradle.kts`
-  as a starting point.
-- **LUFS (integrated loudness) + True Peak.** The web version got these
-  for free from ffmpeg's `ebur128` filter. Once the FFmpeg decoder extension
-  is wired in for ALAC anyway, reuse the same FFmpeg binary to run
-  `ebur128` for loudness measurement — one dependency, two features.
-- **Decoder consistency.** The original design decision (one decoder for
-  every format, for reproducible results across devices) is fully
-  restored once Phase 2 lands, since everything will route through
-  FFmpeg the same way the web version does.
-- **Extended tags** (ISRC, composer, freeform comments). `MediaMetadataRetriever`
-  doesn't expose these; would need a dedicated tag-parsing library
-  (e.g. `jaudiotagger`) layered on top of `metadata/MetadataReader.kt`.
+- 📊 **Spectrogram** — linear frequency axis, with a channel toggle
+  (combined / Ch 1 / Ch 2)
+- 🎚️ **Level analysis** — peak, RMS, dynamic range, clipping detection,
+  per-channel breakdown
+- 🕵️ **Spectral cutoff detection** — flags likely lossy-to-lossless
+  transcodes by finding where a track's frequency content is artificially
+  cut off, and comparing that against known lossy-encoder signatures
+- 🏷️ **Full metadata** — title, artist, album, genre, release date,
+  track/disc numbers, embedded cover art
+- 📁 **Broad format support** — FLAC, WAV, MP3, AAC, Vorbis, Opus
+  (ALAC support is planned — see [Roadmap](#roadmap))
+- 🔒 **Private by design** — no internet permission, nothing leaves your
+  phone
 
-## Confidence level, file by file
+## Screenshots
 
-- `dsp/SpectrogramAnalyzer.kt` — **compiled and tested** in this
-  environment (`kotlinc`), with results cross-checked against the web
-  version's test suite. Highest confidence.
-- `decode/AudioDecoder.kt`, `metadata/MetadataReader.kt` — plain Android
-  SDK APIs (`MediaCodec`/`MediaExtractor`/`MediaMetadataRetriever`),
-  written against long-stable, well-documented patterns, but **not
-  compiled** (no Android SDK available here).
-- `ui/*.kt`, `MainActivity.kt` — Jetpack Compose, **not compiled** (no
-  Compose libraries available here to check against). Reviewed by hand
-  for type/import consistency, but this is the most likely place for a
-  small mistake (an import, a parameter name) to surface on first build.
+<!--
+  Add a few screenshots here once you have some you're happy sharing
+  publicly, e.g.:
+  <p float="left">
+    <img src="docs/screenshot-upload.png" width="240" />
+    <img src="docs/screenshot-report.png" width="240" />
+    <img src="docs/screenshot-spectrogram.png" width="240" />
+  </p>
+-->
 
-If the first `gradle assembleDebug` run fails, it's most likely a minor
-Compose API/import mismatch — paste the error back and it's a quick fix.
+## Tech stack
 
-## Build
+- **Kotlin** + **Jetpack Compose** for the UI
+- **`MediaExtractor` / `MediaCodec`** (Android's own APIs) for decoding —
+  no NDK/native dependency in this phase
+- A hand-written **FFT / STFT DSP core**, streaming rather than
+  buffering a whole track's analysis in memory, so peak memory stays
+  roughly constant regardless of track length
+- **`MediaMetadataRetriever`** for tags and embedded artwork
 
-```
+## Getting started
+
+Clone and build with Gradle — no Android Studio required:
+
+```bash
+git clone https://github.com/gh9aravind/SpectraPro-mobile
+cd SpectraPro-mobile
 gradle assembleDebug
 ```
-GitHub Actions (`.github/workflows/build.yml`) does this automatically on
-every push and uploads the APK as a build artifact — no local Android
-Studio needed, matching the android-music-app workflow.
 
-## Version pins
+Or just push to `main` — GitHub Actions (`.github/workflows/build.yml`)
+builds a debug APK on every push and uploads it as a workflow artifact,
+so you can build and test entirely from a phone with no local toolchain.
 
-`build.gradle.kts` files pin specific AGP/Kotlin/Compose/AndroxdX versions
-that were current and known-good at write time. If Android Studio or
-Gradle suggests newer ones when you open this, that's normal — bump them.
+## Architecture
+
+```
+ui/          Jetpack Compose screens, cards, spectrogram rendering
+decode/      MediaExtractor + MediaCodec -> per-channel Float PCM
+metadata/    MediaMetadataRetriever -> tags + cover art
+dsp/         FFT/STFT, level stats, spectral-cutoff heuristic
+model/       UI state
+```
+
+The DSP core (`dsp/SpectrogramAnalyzer.kt`) has no Android dependencies —
+it's plain Kotlin, unit-testable on a normal JVM.
+
+## Roadmap
+
+- [ ] **ALAC support** via [`org.jellyfin.media3:media3-ffmpeg-decoder`](https://github.com/jellyfin/media3-ffmpeg-decoder)
+      (a prebuilt AAR, no NDK build step needed)
+- [ ] **LUFS (integrated loudness) + True Peak**, via the same FFmpeg
+      dependency's `ebur128` filter
+- [ ] Extended tags (ISRC, composer, freeform comments) via a dedicated
+      tag-parsing library
+- [ ] Fully streaming decode for arbitrarily long files (currently capped
+      at 20 minutes to stay within a phone's memory budget)
+
+See [CHANGELOG.md](CHANGELOG.md) for what's already shipped.
+
+## Contributing
+
+This started as a personal tool, so there's no formal contributing guide
+yet — issues and PRs are still welcome.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

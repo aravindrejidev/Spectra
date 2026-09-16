@@ -11,11 +11,13 @@ import kotlin.math.sqrt
 
 /**
  * Pure-math DSP core. No Android dependencies here on purpose, so it is
- * plain-JVM testable (see the accompanying scratch tests) and easy to
- * reason about independently of decode/UI concerns.
+ * plain-JVM testable and easy to reason about independently of
+ * decode/UI concerns.
  *
  * This mirrors the worker.js implementation used in the web-app version of
- * Spectra, tested there against synthetic sine/noise signals.
+ * Spectra, tested there against synthetic sine/noise signals, and
+ * cross-checked here against the same test cases after the streaming
+ * rewrite below (see CHANGELOG.md).
  */
 
 private const val FFT_SIZE = 2048
@@ -110,10 +112,10 @@ private fun magToDb(mag: Double): Double = 20 * log10(max(mag, 1e-9))
 /** STFT computed as a single streaming pass: each frame's magnitude is folded
  *  immediately into the average-spectrum accumulator and the display-bucket
  *  accumulators, then discarded. Peak memory is O(FFT_SIZE + targetCols*targetRows),
- *  not O(numFrames * FFT_SIZE/2) — the old two-pass version held every frame
+ *  not O(numFrames * FFT_SIZE/2) — an earlier two-pass version held every frame
  *  of the whole track in memory at once, which is fine for a 3-minute song
  *  but crashes on long files (a 20+ minute track could need well over a
- *  gigabyte just for that intermediate array). */
+ *  gigabyte just for that intermediate array). See CHANGELOG.md. */
 private class StreamingSpectrogram(private val numCh: Int, private val targetCols: Int, private val targetRows: Int) {
     val half = FFT_SIZE / 2
     val avgSpectrumAccum = DoubleArray(half)

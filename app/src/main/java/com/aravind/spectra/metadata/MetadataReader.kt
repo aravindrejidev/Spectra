@@ -11,11 +11,8 @@ import android.net.Uri
  *
  * NOT covered (MediaMetadataRetriever doesn't expose these): ISRC,
  * composer/copyright on some containers, freeform comment fields. Getting
- * full parity with desktop tag readers (like the ISRC/comment rows in
- * the reference screenshots) would need a dedicated tag-parsing library
- * (e.g. jaudiotagger) layered on top of this — worth adding later if
- * those fields matter to you, but left out of this first pass rather
- * than guessing at binary tag-parsing code that can't be verified here.
+ * full parity with desktop tag readers would need a dedicated tag-parsing
+ * library (e.g. jaudiotagger) layered on top of this.
  */
 object MetadataReader {
 
