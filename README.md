@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" width="120" />
+</p>
+
 # Spectra
 
 ![Build](https://github.com/gh9aravind/SpectraPro-mobile/actions/workflows/build.yml/badge.svg)
@@ -32,6 +36,12 @@ doesn't even request network access.
   phone
 
 ## Screenshots
+
+<p float="left">
+  <img src="docs/screenshot-1.png" width="240" />
+  <img src="docs/screenshot-2.png" width="240" />
+  <img src="docs/screenshot-3.png" width="240" />
+</p>
 
 <!--
   Add a few screenshots here once you have some you're happy sharing
