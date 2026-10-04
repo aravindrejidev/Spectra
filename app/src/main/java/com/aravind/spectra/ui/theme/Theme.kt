@@ -6,31 +6,40 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 object SpectraColors {
-    val Void = Color(0xFF08090D)
-    val Card = Color(0xFF13141C)
-    val CardAlt = Color(0xFF1B1D29)
-    val Border = Color(0xFF262838)
-    val Text1 = Color(0xFFEEF0F6)
-    val Text2 = Color(0xFF8B91A7)
-    val Text3 = Color(0xFF5A6079)
-    val Accent = Color(0xFF7C6CF0)
-    val AccentSoft = Color(0x247C6CF0)
-    val Warn = Color(0xFFFF6A6A)
-    val WarnSoft = Color(0x1FFF6A6A)
-    val Good = Color(0xFF4FD68C)
-    val GoodSoft = Color(0x1F4FD68C)
+    // backdrop (dark walnut)
+    val WoodTop = Color(0xFF3A2A1E)
+    val WoodBottom = Color(0xFF140E0A)
+
+    // brushed aluminium
+    val MetalHi = Color(0xFFF1F2F5)
+    val MetalMid = Color(0xFFCBCFD6)
+    val MetalLo = Color(0xFF9DA2AC)
+    val MetalEdgeDark = Color(0xFF4B4F57)
+    val Ink = Color(0xFF23262B)
+    val InkSoft = Color(0xFF555A64)
+
+    // glass screens + phosphor
+    val ScreenTop = Color(0xFF0C1411)
+    val ScreenBottom = Color(0xFF030504)
+    val Phosphor = Color(0xFF6DFFB4)
+    val PhosphorDim = Color(0xFF3A8F69)
+
+    // lamps
+    val Amber = Color(0xFFFFB347)
+    val Red = Color(0xFFFF5A4D)
+    val Green = Color(0xFF4DFF9A)
+    val Blue = Color(0xFF59B6FF)
 }
 
-private val DarkColors = darkColorScheme(
-    background = SpectraColors.Void,
-    surface = SpectraColors.Card,
-    primary = SpectraColors.Accent,
-    onBackground = SpectraColors.Text1,
-    onSurface = SpectraColors.Text1,
-    outline = SpectraColors.Border
+private val Scheme = darkColorScheme(
+    primary = SpectraColors.Phosphor,
+    background = SpectraColors.WoodBottom,
+    surface = SpectraColors.MetalMid,
+    onBackground = SpectraColors.MetalHi,
+    onSurface = SpectraColors.Ink
 )
 
 @Composable
 fun SpectraTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = DarkColors, content = content)
+    MaterialTheme(colorScheme = Scheme, content = content)
 }
