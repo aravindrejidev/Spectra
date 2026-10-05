@@ -55,7 +55,13 @@ fun buildReport(s: UiState.Success): String {
         appendLine("Codec: ${codecName(s.info.codecMime)}")
         appendLine("Sample rate: ${fmtHz(a.sampleRate.toDouble())}  Channels: ${a.channelCount}")
         appendLine("Duration: ${fmtDurationSec(a.durationSec)}  Size: ${fmtBytes(s.fileSizeBytes)}")
-        appendLine("Cutoff: ${fmtHz(a.cutoff.cutoffHz)} of ${fmtHz(a.cutoff.nyquist)}")
+        appendLine(
+            if (a.cutoff.hasEdge) {
+                "Cutoff edge: ${fmtHz(a.cutoff.cutoffHz)} of ${fmtHz(a.cutoff.nyquist)} " +
+                    "(steepness ${f1(a.cutoff.strengthDb)} dB/300Hz, drop ${f1(a.cutoff.dropDb)} dB" +
+                    (a.cutoff.lockRatio?.let { ", HF persistence ${(it * 100).roundToInt()}%" } ?: "") + ")"
+            } else "Cutoff edge: none found"
+        )
         appendLine("Integrated loudness: ${fmtLufs(a.lufs)}  LRA: ${a.lra?.let { "${f1(it)} LU" } ?: "—"}")
         appendLine("Peak: ${fmtDb(a.peakDb)}  True peak: ${fmtDb(a.truePeakDb)}  RMS: ${fmtDb(a.rmsDb)}")
         appendLine("Dynamic range: ${a.dr?.let { "DR${it.roundToInt()}" } ?: "—"}")
