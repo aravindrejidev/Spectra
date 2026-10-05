@@ -48,7 +48,7 @@ fun buildReport(s: UiState.Success): String {
         appendLine(s.fileName)
         s.tags.title?.let { t -> appendLine("${s.tags.artist ?: "Unknown artist"} - $t") }
         appendLine()
-        appendLine("VERDICT: ${v.headline}" + (v.confidence?.let { " ($it% confidence)" } ?: ""))
+        appendLine("VERDICT: ${v.headline}" + (v.confidence?.let { " ($it% evidence)" } ?: ""))
         appendLine(v.summary)
         v.estimatedSource?.let { appendLine("Estimated source: $it") }
         appendLine()
