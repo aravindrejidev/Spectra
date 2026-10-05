@@ -6,16 +6,18 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
  * Streaming decoder: MediaExtractor + MediaCodec -> planar float chunks pushed to a
  * [Listener]. Nothing is accumulated here, so memory stays flat for any track length.
- * Float PCM output is requested; if the decoder refuses, it falls back to PCM16.
+ * Handles every PCM output encoding a decoder may report and sanitizes bad values.
  */
 object AudioDecoder {
 
     interface Listener {
+        /** floatOutput = decoder delivers more than 16 bits, so bit-depth detection is meaningful. */
         fun onStart(sampleRate: Int, channelCount: Int, expectedFrames: Long, floatOutput: Boolean)
         fun onChunk(planar: Array<FloatArray>, frames: Int, progress: Float)
     }
@@ -25,7 +27,8 @@ object AudioDecoder {
         val channelCount: Int,
         val codecMime: String,
         val floatOutput: Boolean,
-        val durationUs: Long
+        val durationUs: Long,
+        val encoding: String
     )
 
     fun decode(context: Context, uri: Uri, listener: Listener, checkCancelled: () -> Unit): DecodeInfo {
@@ -54,11 +57,18 @@ object AudioDecoder {
                 if (inFormat.containsKey(MediaFormat.KEY_DURATION)) inFormat.getLong(MediaFormat.KEY_DURATION) else 0L
             val expectedFrames = if (durationUs > 0) durationUs * sampleRate / 1_000_000L else 0L
 
-            val c = openCodec(extractor, trackIndex, mime)
+            val c = try {
+                MediaCodec.createDecoderByType(mime)
+            } catch (e: Exception) {
+                throw IllegalStateException(
+                    "No decoder available for $mime on this device (ALAC isn't supported yet).", e
+                )
+            }
             codec = c
+            c.configure(inFormat, null, null, 0)
             c.start()
 
-            var floatOut = false
+            var encoding = AudioFormat.ENCODING_PCM_16BIT
             var started = false
             var planar: Array<FloatArray> = emptyArray()
             val bufInfo = MediaCodec.BufferInfo()
@@ -95,32 +105,16 @@ object AudioDecoder {
                             val bb = out.order(ByteOrder.LITTLE_ENDIAN)
                             if (!started) {
                                 started = true
-                                listener.onStart(sampleRate, channelCount, expectedFrames, floatOut)
+                                listener.onStart(sampleRate, channelCount, expectedFrames, isHighDepth(encoding))
                             }
-                            val frames: Int
-                            if (floatOut) {
-                                val fb = bb.asFloatBuffer()
-                                frames = fb.remaining() / channelCount
-                                if (planar.size != channelCount || planar[0].size < frames) {
-                                    planar = Array(channelCount) { FloatArray(frames + 1024) }
-                                }
-                                var p = 0
-                                for (f in 0 until frames) {
-                                    for (ch in 0 until channelCount) planar[ch][f] = fb.get(p++)
-                                }
-                            } else {
-                                val sb = bb.asShortBuffer()
-                                frames = sb.remaining() / channelCount
-                                if (planar.size != channelCount || planar[0].size < frames) {
-                                    planar = Array(channelCount) { FloatArray(frames + 1024) }
-                                }
-                                var p = 0
-                                for (f in 0 until frames) {
-                                    for (ch in 0 until channelCount) planar[ch][f] = sb.get(p++) / 32768f
-                                }
+                            val frames = bb.remaining() / (bytesPer(encoding) * channelCount)
+                            if (planar.size != channelCount || planar[0].size < frames) {
+                                planar = Array(channelCount) { FloatArray(frames + 1024) }
                             }
+                            convert(bb, encoding, channelCount, frames, planar)
                             val progress =
-                                if (durationUs > 0) (bufInfo.presentationTimeUs.toFloat() / durationUs).coerceIn(0f, 1f) else -1f
+                                if (durationUs > 0) (bufInfo.presentationTimeUs.toFloat() / durationUs).coerceIn(0f, 1f)
+                                else -1f
                             listener.onChunk(planar, frames, progress)
                         }
                         c.releaseOutputBuffer(oi, false)
@@ -130,8 +124,9 @@ object AudioDecoder {
                         val nf = c.outputFormat
                         sampleRate = nf.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                         channelCount = nf.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-                        floatOut = nf.containsKey(MediaFormat.KEY_PCM_ENCODING) &&
-                            nf.getInteger(MediaFormat.KEY_PCM_ENCODING) == AudioFormat.ENCODING_PCM_FLOAT
+                        encoding =
+                            if (nf.containsKey(MediaFormat.KEY_PCM_ENCODING)) nf.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                            else AudioFormat.ENCODING_PCM_16BIT
                     }
                     oi == MediaCodec.INFO_TRY_AGAIN_LATER -> {
                         if (inEos) {
@@ -141,7 +136,7 @@ object AudioDecoder {
                     }
                 }
             }
-            return DecodeInfo(sampleRate, channelCount, mime, floatOut, durationUs)
+            return DecodeInfo(sampleRate, channelCount, mime, isHighDepth(encoding), durationUs, label(encoding))
         } finally {
             runCatching { codec?.stop() }
             runCatching { codec?.release() }
@@ -149,21 +144,73 @@ object AudioDecoder {
         }
     }
 
-    private fun openCodec(extractor: MediaExtractor, track: Int, mime: String): MediaCodec {
-        var c = try {
-            MediaCodec.createDecoderByType(mime)
-        } catch (e: Exception) {
-            throw IllegalStateException("No decoder available for $mime on this device (ALAC isn't supported yet).", e)
+    private fun bytesPer(enc: Int): Int = when (enc) {
+        AudioFormat.ENCODING_PCM_8BIT -> 1
+        AudioFormat.ENCODING_PCM_24BIT_PACKED -> 3
+        AudioFormat.ENCODING_PCM_FLOAT, AudioFormat.ENCODING_PCM_32BIT -> 4
+        else -> 2
+    }
+
+    private fun isHighDepth(enc: Int): Boolean =
+        enc == AudioFormat.ENCODING_PCM_FLOAT ||
+            enc == AudioFormat.ENCODING_PCM_32BIT ||
+            enc == AudioFormat.ENCODING_PCM_24BIT_PACKED
+
+    private fun label(enc: Int): String = when (enc) {
+        AudioFormat.ENCODING_PCM_FLOAT -> "Float32"
+        AudioFormat.ENCODING_PCM_32BIT -> "PCM32"
+        AudioFormat.ENCODING_PCM_24BIT_PACKED -> "PCM24"
+        AudioFormat.ENCODING_PCM_8BIT -> "PCM8"
+        else -> "PCM16"
+    }
+
+    private fun convert(bb: ByteBuffer, enc: Int, ch: Int, frames: Int, out: Array<FloatArray>) {
+        when (enc) {
+            AudioFormat.ENCODING_PCM_FLOAT -> {
+                val fb = bb.asFloatBuffer()
+                var p = 0
+                for (f in 0 until frames) {
+                    for (c in 0 until ch) {
+                        val v = fb.get(p++)
+                        out[c][f] = if (v.isNaN() || v.isInfinite()) 0f else v
+                    }
+                }
+            }
+            AudioFormat.ENCODING_PCM_32BIT -> {
+                val ib = bb.asIntBuffer()
+                var p = 0
+                for (f in 0 until frames) {
+                    for (c in 0 until ch) out[c][f] = (ib.get(p++) / 2147483648.0).toFloat()
+                }
+            }
+            AudioFormat.ENCODING_PCM_24BIT_PACKED -> {
+                var o = bb.position()
+                for (f in 0 until frames) {
+                    for (c in 0 until ch) {
+                        val b0 = bb.get(o).toInt() and 0xFF
+                        val b1 = bb.get(o + 1).toInt() and 0xFF
+                        val b2 = bb.get(o + 2).toInt()
+                        out[c][f] = ((b2 shl 16) or (b1 shl 8) or b0) / 8388608f
+                        o += 3
+                    }
+                }
+            }
+            AudioFormat.ENCODING_PCM_8BIT -> {
+                var o = bb.position()
+                for (f in 0 until frames) {
+                    for (c in 0 until ch) {
+                        out[c][f] = ((bb.get(o).toInt() and 0xFF) - 128) / 128f
+                        o++
+                    }
+                }
+            }
+            else -> {
+                val sb = bb.asShortBuffer()
+                var p = 0
+                for (f in 0 until frames) {
+                    for (c in 0 until ch) out[c][f] = sb.get(p++) / 32768f
+                }
+            }
         }
-        try {
-            val f = extractor.getTrackFormat(track)
-            f.setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_FLOAT)
-            c.configure(f, null, null, 0)
-        } catch (e: Exception) {
-            runCatching { c.release() }
-            c = MediaCodec.createDecoderByType(mime)
-            c.configure(extractor.getTrackFormat(track), null, null, 0)
-        }
-        return c
     }
 }
