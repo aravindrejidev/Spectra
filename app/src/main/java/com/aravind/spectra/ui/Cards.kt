@@ -188,9 +188,9 @@ fun SpectrogramUnit(
             "mid" to "MID",
             "side" to "SIDE"
         ).filter { a.views.containsKey(it.first) }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             names.forEach { (key, label) ->
-                HwButton(label, Modifier.weight(1f), active = view == key, led = SpectraColors.Phosphor, height = 40.dp) {
+                HwButton(label, Modifier.weight(1f), active = view == key, led = SpectraColors.Phosphor, height = 54.dp, compact = true) {
                     onView(key)
                 }
             }
