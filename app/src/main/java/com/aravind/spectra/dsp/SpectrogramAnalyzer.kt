@@ -214,7 +214,7 @@ class StreamAnalyzer(
                 }
                 val y = f1.process(f0.process(s))
                 ksq += y * y
-                if (trackBits) bits = bits or (a * 8388608.0).roundToLong()
+                if (trackBits) bits = bits or Math.round(a * 8388608.0)
             }
             peak[c] = pk
             drPeak[c] = blockPk
