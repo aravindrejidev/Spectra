@@ -146,13 +146,13 @@ fun VerdictUnit(v: Verdict) {
                 )
                 v.confidence?.let { c ->
                     Spacer(Modifier.height(12.dp))
-                    Lcd("CONFIDENCE $c%", color = tone, size = 11.sp)
+                    Lcd("EVIDENCE $c%", color = tone, size = 11.sp)
                     Spacer(Modifier.height(4.dp))
                     LedLadder(c.toDouble(), 0.0, 100.0, segments = 20, tint = tone)
                 }
                 v.estimatedSource?.let {
                     Spacer(Modifier.height(10.dp))
-                    Lcd("SOURCE ≈ $it", color = SpectraColors.Amber, size = 12.sp)
+                    Lcd("SOURCE: $it", color = SpectraColors.Amber, size = 12.sp)
                 }
             }
         }
@@ -303,6 +303,11 @@ fun DetailsUnit(s: UiState.Success) {
                 )
                 add(Readout("Duration", fmtDurationSec(a.durationSec)))
                 add(Readout("Nyquist", fmtHz(a.sampleRate / 2.0)))
+                add(Readout("Cutoff edge", if (a.cutoff.hasEdge) fmtHz(a.cutoff.cutoffHz) else "none found"))
+                if (a.cutoff.hasEdge) {
+                add(Readout("Edge steepness", "${f1(a.cutoff.strengthDb)} dB/300Hz"))
+                a.cutoff.lockRatio?.let { add(Readout("HF persistence", "${(it * 100).roundToInt()} %")) }
+                }
                 add(Readout("File size", fmtBytes(s.fileSizeBytes)))
                 add(Readout("Frames", a.totalFrames.toString()))
                 add(Readout("DC offset", f2(a.channels.maxOf { abs(it.dcOffset) } * 100) + " %"))
