@@ -10,6 +10,7 @@ enum class Severity { GOOD, INFO, WARN, BAD }
 
 data class Finding(val label: String, val severity: Severity, val text: String)
 
+/** confidence = strength of evidence for the stated call (rule-based score, not a probability). */
 data class Verdict(
     val severity: Severity,
     val headline: String,
@@ -30,10 +31,12 @@ private data class Auth(
 private fun khz(hz: Double): String = String.format(Locale.US, "%.1f kHz", hz / 1000.0)
 private fun n1(x: Double): String = String.format(Locale.US, "%.1f", x)
 private fun n2(x: Double): String = String.format(Locale.US, "%.2f", x)
+private fun pct(x: Double): String = "${(x * 100).roundToInt()}%"
 
 object VerdictEngine {
     private val LOSSLESS = setOf("audio/flac", "audio/raw", "audio/alac", "audio/x-wav")
-    private val KNOWN_LOWPASS = doubleArrayOf(15500.0, 16000.0, 17000.0, 17500.0, 18000.0, 19000.0, 19500.0, 20000.0)
+    private val SIGNATURES = doubleArrayOf(15500.0, 16000.0, 17000.0, 17500.0, 18000.0, 19000.0)
+    private val STANDARD_RATES = intArrayOf(32000, 44100, 48000, 88200, 96000, 176400, 192000)
 
     fun isLossless(mime: String?): Boolean = mime != null && mime.lowercase() in LOSSLESS
 
@@ -48,49 +51,129 @@ object VerdictEngine {
         else -> "320 kbps or higher"
     }
 
-    fun evaluate(a: AnalysisResult, codecMime: String?, codecLabel: String): Verdict {
-        val nyq = a.sampleRate / 2.0
-        val cut = a.cutoff.cutoffHz
-        val ratio = cut / nyq
-        val bandLimited = ratio < 0.92 && a.cutoff.isSharp
-        val lossless = isLossless(codecMime)
-        val matchesLowpass = KNOWN_LOWPASS.any { abs(it - cut) < 350.0 }
-        val dropBonus = min(25.0, max(0.0, a.cutoff.dropDb - 25.0)).toInt()
-        val fakeConf = min(98, 58 + dropBonus + (if (matchesLowpass) 15 else 0))
+    private fun sourceRate(cut: Double): Int {
+        for (r in STANDARD_RATES) if (r / 2.0 >= cut * 0.985) return r
+        return STANDARD_RATES.last()
+    }
 
-        val auth: Auth = when {
-            lossless && bandLimited && a.sampleRate >= 88200 && cut in 20500.0..24500.0 -> Auth(
-                Severity.WARN, "Upsampled hi-res",
-                "Real content stops at ${khz(cut)}, far below the ${khz(nyq)} Nyquist limit. " +
-                    "Looks like a 44.1 / 48 kHz master resampled to ${khz(a.sampleRate.toDouble())}.",
-                min(95, 62 + dropBonus), "44.1 / 48 kHz master"
+    private fun rateLabel(r: Int): String =
+        if (r % 1000 == 0) "${r / 1000} kHz" else String.format(Locale.US, "%.1f kHz", r / 1000.0)
+
+    private fun lossyContainer(c: CutoffResult, codecLabel: String): Auth {
+        val extra = if (c.hasEdge) "Brick-wall edge at ${khz(c.cutoffHz)}." else "No brick-wall cutoff (gradual roll-off)."
+        return Auth(
+            Severity.INFO, "Lossy source",
+            "$codecLabel is a lossy format, so a low-pass is expected. $extra",
+            null, if (c.hasEdge) guessLossyBitrate(c.cutoffHz) else null
+        )
+    }
+
+    private fun upsampled(a: AnalysisResult, c: CutoffResult): Auth {
+        val src = sourceRate(c.cutoffHz)
+        val bonus = max(0, min(12, ((c.strengthDb - 20.0) / 2.0).toInt()))
+        return Auth(
+            Severity.WARN, "Upsampled hi-res",
+            "Content stops at ${khz(c.cutoffHz)}, only ${pct(c.cutoffHz / c.nyquist)} of the ${khz(c.nyquist)} limit. " +
+                "Typical of a ${rateLabel(src)} master resampled to ${rateLabel(a.sampleRate)}.",
+            min(95, 78 + bonus), "${rateLabel(src)} master"
+        )
+    }
+
+    /** Hard edge between 19.5 and 21 kHz: CD-era anti-alias filters and 256-320 kbps encodes look alike. */
+    private fun ambiguousEdge(c: CutoffResult): Auth {
+        val lock = c.lockRatio
+        var s = 30
+        if (lock != null) s += when {
+            lock < 0.5 -> 20
+            lock < 0.8 -> 8
+            else -> -10
+        }
+        s = s.coerceIn(10, 60)
+        return if (s >= 50) {
+            Auth(
+                Severity.WARN, "Possibly lossy",
+                "Hard low-pass at ${khz(c.cutoffHz)} and high frequencies don't persist up to the edge (${pct(lock ?: 0.0)}). " +
+                    "Common in 256–320 kbps encodes, but anti-alias filtered masters can look similar.",
+                s, null
             )
-            lossless && bandLimited -> Auth(
-                Severity.BAD, "Fake lossless",
-                "The spectrum falls off a cliff at ${khz(cut)} (${n1(a.cutoff.dropDb)} dB drop) while the file claims " +
-                    "${khz(nyq)} of bandwidth. Typical of a lossy encode converted to lossless.",
-                fakeConf, guessLossyBitrate(cut) + " lossy file"
-            )
-            lossless && ratio < 0.92 -> Auth(
-                Severity.INFO, "Band-limited",
-                "Energy fades smoothly above ${khz(cut)}. No encoder-style brick wall, so this is likely natural " +
-                    "to the recording or mastering.",
+        } else {
+            Auth(
+                Severity.INFO, "Inconclusive low-pass",
+                "A hard edge at ${khz(c.cutoffHz)} is typical of CD-era anti-alias filters, but 256–320 kbps lossy " +
+                    "encodes look similar. Nothing else here points to a lossy origin.",
                 null, null
             )
-            lossless -> Auth(
-                Severity.GOOD, "Authentic lossless",
-                "Content reaches ${khz(cut)} with no brick-wall cutoff. Nothing here suggests a lossy origin.",
-                null, null
+        }
+    }
+
+    /** Hard edge below 19.5 kHz: rare in genuine masters, typical of lossy encoders. */
+    private fun lowEdge(c: CutoffResult): Auth {
+        val lock = c.lockRatio
+        var s = if (c.cutoffHz >= 12000.0) 62 else 50
+        if (c.strengthDb >= 30.0) s += 4
+        if (lock != null) {
+            if (lock < 0.5) s += 10 else if (lock >= 0.8) s -= 12
+        }
+        if (SIGNATURES.any { abs(it - c.cutoffHz) < 250.0 }) s += 6
+        s = s.coerceIn(40, 96)
+        return when {
+            s >= 70 -> Auth(
+                Severity.BAD, "Likely fake lossless",
+                "A brick-wall low-pass at ${khz(c.cutoffHz)}, far below Nyquist, is the fingerprint of a lossy encode " +
+                    "(${guessLossyBitrate(c.cutoffHz)}).",
+                s, guessLossyBitrate(c.cutoffHz) + " lossy file"
+            )
+            s >= 50 -> Auth(
+                Severity.WARN, "Suspicious low-pass",
+                "Hard cutoff at ${khz(c.cutoffHz)}. Could be a lossy origin or a naturally band-limited recording.",
+                s, null
             )
             else -> Auth(
-                Severity.INFO, "Lossy source",
-                "$codecLabel is a lossy format, so a low-pass is expected. Detected bandwidth: ${khz(cut)}.",
-                null, if (bandLimited) guessLossyBitrate(cut) else null
+                Severity.INFO, "Inconclusive low-pass",
+                "Hard cutoff at ${khz(c.cutoffHz)}, but high frequencies persist up to it like in a natural recording.",
+                null, null
             )
+        }
+    }
+
+    fun evaluate(a: AnalysisResult, codecMime: String?, codecLabel: String): Verdict {
+        val c = a.cutoff
+        val ratio = c.cutoffHz / c.nyquist
+        val lossless = isLossless(codecMime)
+
+        val auth: Auth = when {
+            !lossless -> lossyContainer(c, codecLabel)
+            !c.hasEdge -> Auth(
+                Severity.GOOD, "No lossy signature",
+                "No brick-wall cutoff found; the spectrum reaches the top of the band smoothly. " +
+                    "This test looks for common lossy fingerprints, so it can't prove a file is lossless.",
+                null, null
+            )
+            a.sampleRate >= 88200 && ratio <= 0.56 && c.cutoffHz >= 18500.0 -> upsampled(a, c)
+            c.nyquist < 20000.0 -> if (ratio >= 0.9) {
+                Auth(Severity.GOOD, "No lossy signature", "Edge at ${khz(c.cutoffHz)} is close to Nyquist.", null, null)
+            } else {
+                Auth(Severity.INFO, "Band-limited", "Hard edge at ${khz(c.cutoffHz)} in a low sample-rate file; can't judge.", null, null)
+            }
+            c.cutoffHz >= 21000.0 -> Auth(
+                Severity.GOOD, "No lossy signature",
+                "The edge at ${khz(c.cutoffHz)} is a normal anti-alias filter. No lossy fingerprint found.",
+                null, null
+            )
+            c.cutoffHz >= 19500.0 -> ambiguousEdge(c)
+            else -> lowEdge(c)
         }
 
         val f = ArrayList<Finding>()
-        f += Finding("Bandwidth", auth.severity, "Cutoff ${khz(cut)} · ${(ratio * 100).roundToInt()}% of Nyquist")
+        f += Finding(
+            "Bandwidth", auth.severity,
+            if (c.hasEdge) "Hard edge at ${khz(c.cutoffHz)} (${pct(ratio)} of Nyquist)"
+            else "No brick-wall cutoff, spectrum is smooth up to Nyquist"
+        )
+        if (c.hasEdge) {
+            val lockTxt = c.lockRatio?.let { ", HF persistence ${pct(it)}" } ?: ""
+            f += Finding("Edge", Severity.INFO, "Steepness ${n1(c.strengthDb)} dB per 300 Hz, drop ${n1(c.dropDb)} dB$lockTxt")
+        }
 
         val runs = a.clipRuns
         f += when {
