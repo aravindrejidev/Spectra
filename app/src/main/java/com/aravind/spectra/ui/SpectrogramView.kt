@@ -285,6 +285,7 @@ fun AvgSpectrumPlot(avgDb: FloatArray, nyquist: Double, cutoffHz: Double, sharp:
         )
         drawPath(line, SpectraColors.Phosphor, style = Stroke(1.6.dp.toPx(), join = StrokeJoin.Round))
 
+        if (!sharp) return@Canvas
         val cx = left + pw * (cutoffHz / nyquist).toFloat()
         val mark = if (sharp) SpectraColors.Amber else SpectraColors.PhosphorDim
         drawLine(
