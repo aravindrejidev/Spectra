@@ -106,7 +106,7 @@ object VerdictEngine {
             Finding("True peak", Severity.GOOD, "${n1(a.truePeakDb)} dBTP, headroom OK")
         }
 
-        a.dr?.let { dr ->
+        a.dr?.takeIf { it.isFinite() }?.let { dr ->
             val d = dr.roundToInt()
             f += when {
                 d <= 4 -> Finding("Dynamics", Severity.BAD, "DR$d, extremely compressed (loudness-war master)")
