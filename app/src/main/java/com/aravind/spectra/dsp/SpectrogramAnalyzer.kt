@@ -8,7 +8,10 @@ private const val HOP = 1024
 private const val BINS = FFT_SIZE / 2
 private const val ROWS = 256 // BINS / 4 -> row = bin shr 2
 private const val COLS = 480
+private const val NB = 128 // frequency bands kept per frame for the edge tests
+private const val BAND_BINS = BINS / NB // 8 -> band = bin shr 3
 private const val MAX_FFT_FRAMES = 16_000
+private const val MAX_STORE = MAX_FFT_FRAMES + 512
 private const val DR_BLOCK_SUBS = 30 // 3 s of 100 ms sub-blocks
 private const val SCALE = 4.0 / FFT_SIZE // 0 dBFS sine == 0 dB
 private const val SCALE_SQ = SCALE * SCALE
@@ -33,7 +36,21 @@ data class StereoStats(
     val dualMono: Boolean
 )
 
-data class CutoffResult(val cutoffHz: Double, val nyquist: Double, val isSharp: Boolean, val dropDb: Double)
+/**
+ * hasEdge: a brick-wall drop was found; cutoffHz is then its position (else Nyquist).
+ * strengthDb: steepest fall over ~300 Hz. dropDb: level just below the edge minus the floor above it.
+ * lockRatio: share of "bright" frames whose highest active band sits at the edge (HF persistence).
+ */
+data class CutoffResult(
+    val hasEdge: Boolean,
+    val cutoffHz: Double,
+    val nyquist: Double,
+    val strengthDb: Double,
+    val dropDb: Double,
+    val lockRatio: Double?
+) {
+    val isSharp: Boolean get() = hasEdge
+}
 
 /** dbMatrix is flat [col * rows + row], row 0 = lowest frequency. */
 data class ChannelSpectrogram(val dbMatrix: FloatArray, val cols: Int, val rows: Int)
@@ -166,6 +183,11 @@ class StreamAnalyzer(
     private val sumP = Array(numViews) { DoubleArray(COLS * ROWS) }
     private val cnt = IntArray(COLS * ROWS)
     private val avgAccum = DoubleArray(BINS)
+
+    // per-frame band levels (dB) kept for the cutoff-edge persistence test
+    private val bandDb = FloatArray(MAX_STORE * NB)
+    private val bandAcc = DoubleArray(NB)
+    private var storedFrames = 0
 
     fun feed(data: Array<FloatArray>, frames: Int) {
         if (frames <= 0) return
@@ -376,6 +398,7 @@ class StreamAnalyzer(
                 s3[idx] += mr * mr + mi * mi
                 s4[idx] += sr * sr + si * si
                 avgAccum[k] += sqrt(pa) * SCALE
+                bandAcc[k shr 3] += pa
             }
         } else {
             val s0 = sumP[0]
@@ -385,8 +408,18 @@ class StreamAnalyzer(
                 val p = re[k] * re[k] + im[k] * im[k]
                 s0[idx] += p
                 avgAccum[k] += sqrt(p) * SCALE
+                bandAcc[k shr 3] += p
             }
         }
+
+        if (storedFrames < MAX_STORE) {
+            val o = storedFrames * NB
+            for (b in 0 until NB) {
+                bandDb[o + b] = (10.0 * log10(max(bandAcc[b] / BAND_BINS * SCALE_SQ, 1e-18))).toFloat()
+            }
+            storedFrames++
+        }
+        Arrays.fill(bandAcc, 0.0)
         frameCount++
     }
 
@@ -428,9 +461,15 @@ class StreamAnalyzer(
         return toDb(p2) - toDb(rmsTop)
     }
 
-    private fun detectCutoff(avg: DoubleArray, sr: Int): CutoffResult {
+    /**
+     * Looks for the steepest fall in the smoothed average spectrum (no level threshold, so it
+     * works whether or not the file has content close to Nyquist), then measures how strongly
+     * that edge persists across frames.
+     */
+    private fun detectEdge(avg: DoubleArray, sr: Int): CutoffResult {
         val n = avg.size
-        val binHz = (sr / 2.0) / n
+        val nyq = sr / 2.0
+        val binHz = nyq / n
         val raw = DoubleArray(n) { toDb(avg[it]) }
         val dbs = DoubleArray(n) { k ->
             var s = 0.0
@@ -441,22 +480,81 @@ class StreamAnalyzer(
             }
             s / c
         }
-        var peakDb = Double.NEGATIVE_INFINITY
-        for (v in dbs) if (v > peakDb) peakDb = v
-        val top = dbs.copyOfRange((n * 0.9).toInt(), n).sorted()
-        val noise = top[top.size / 2]
-        val thr = max(noise + 8.0, peakDb - 65.0)
-        var cb = n - 1
-        for (k in n - 1 downTo 1) {
-            if (dbs[k] > thr && dbs[k - 1] > thr) {
-                cb = k
-                break
+        val w = max(4, (300.0 / binHz).roundToInt())
+        val kMin = max((4000.0 / binHz).roundToInt(), w + 1)
+        var best = Double.NEGATIVE_INFINITY
+        var kb = -1
+        for (k in kMin until n - 1 - w) {
+            var left = 0.0
+            var right = 0.0
+            for (j in 1..w) {
+                left += dbs[k - j]
+                right += dbs[k + j]
+            }
+            val d = (left - right) / w
+            if (d > best) {
+                best = d
+                kb = k
             }
         }
-        val before = max(0, cb - (200 / binHz).roundToInt())
-        val after = min(n - 1, cb + max(1, (1000 / binHz).roundToInt()))
-        val drop = dbs[before] - dbs[after]
-        return CutoffResult(cb * binHz, sr / 2.0, drop > 25.0, drop)
+        val strength = if (kb >= 0) best else 0.0
+        val hasEdge = kb >= 0 && best >= 15.0 && kb * binHz < 0.97 * nyq && (n - 1 - (kb + w)) >= 5
+        if (!hasEdge) return CutoffResult(false, nyq, nyq, strength, 0.0, null)
+
+        val tail = dbs.copyOfRange(kb + w, n)
+        tail.sort()
+        val floor = tail[tail.size / 2]
+        val from = max(0, kb - 3 * w)
+        val to = max(from + 1, kb - w)
+        var s = 0.0
+        for (i in from until to) s += dbs[i]
+        val pre = s / (to - from)
+        val cutoffHz = kb * binHz
+        return CutoffResult(true, cutoffHz, nyq, strength, pre - floor, computeLock(cutoffHz))
+    }
+
+    /** Of the frames that reach (nearly) up to the edge, how many have their top exactly at it. */
+    private fun computeLock(cutoffHz: Double): Double? {
+        val frames = storedFrames
+        val bandHz = (sampleRate / 2.0) / NB
+        val cb = (cutoffHz / bandHz).roundToInt()
+        val lo = cb + 2
+        if (frames < 20 || NB - lo < 3) return null
+
+        val step = max(1, frames / 2000)
+        val sample = FloatArray(((frames + step - 1) / step) * (NB - lo))
+        var m = 0
+        var fr = 0
+        while (fr < frames) {
+            val o = fr * NB
+            for (b in lo until NB) sample[m++] = bandDb[o + b]
+            fr += step
+        }
+        sample.sort()
+        val thr = sample[sample.size / 2] + 12f // stopband floor + 12 dB
+
+        val lowBand = (3000.0 / bandHz).toInt()
+        val brightFrom = cb - (1500.0 / bandHz).roundToInt()
+        val tol = max(2, (400.0 / bandHz).roundToInt())
+        var bright = 0
+        var locked = 0
+        for (f in 0 until frames) {
+            val o = f * NB
+            var top = -1
+            var b = NB - 1
+            while (b > lowBand) {
+                if (bandDb[o + b] >= thr && bandDb[o + b - 1] >= thr) {
+                    top = b
+                    break
+                }
+                b--
+            }
+            if (top >= brightFrom) {
+                bright++
+                if (abs(top - cb) <= tol) locked++
+            }
+        }
+        return if (bright >= 20) locked.toDouble() / bright else null
     }
 
     fun finish(): AnalysisResult {
@@ -498,7 +596,7 @@ class StreamAnalyzer(
 
         val fc = frameCount.toDouble()
         val avg = DoubleArray(BINS) { avgAccum[it] / fc }
-        val cutoff = detectCutoff(avg, sampleRate)
+        val cutoff = detectEdge(avg, sampleRate)
         val avgDb = FloatArray(ROWS) { r ->
             var s = 0.0
             for (j in 0 until 4) s += avg[r * 4 + j]
