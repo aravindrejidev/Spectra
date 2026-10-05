@@ -312,6 +312,7 @@ fun HwButton(
     active: Boolean = false,
     led: Color? = null,
     height: Dp = 44.dp,
+    compact: Boolean = false,
     onClick: () -> Unit
 ) {
     val src = remember { MutableInteractionSource() }
@@ -323,6 +324,7 @@ fun HwButton(
     else listOf(Color(0xFFFAFAFB), Color(0xFFB6BBC4))
     val rim = if (down) listOf(Color(0xFF6B707A), Color(0xFFEDEEF1))
     else listOf(Color.White, Color(0xFF6B707A))
+    val ink = if (down) SpectraColors.Ink else SpectraColors.InkSoft
     Box(
         modifier
             .height(height)
@@ -334,20 +336,28 @@ fun HwButton(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = if (compact) 2.dp else 14.dp),
         contentAlignment = Alignment.Center
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (led != null) {
-                Led(led, active, 9.dp)
-                Spacer(Modifier.width(8.dp))
+        if (compact) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                if (led != null) {
+                    Led(led, active, 8.dp)
+                    Spacer(Modifier.height(4.dp))
+                }
+                Engraved(label, size = 11.sp, spacing = 0.5.sp, color = ink, maxLines = 1)
             }
-            Engraved(
-                label,
-                size = 12.sp,
-                spacing = 1.5.sp,
-                color = if (down) SpectraColors.Ink else SpectraColors.InkSoft
-            )
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (led != null) {
+                    Led(led, active, 9.dp)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Engraved(label, size = 12.sp, spacing = 1.5.sp, color = ink)
+            }
         }
     }
 }
