@@ -10,14 +10,19 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Bit-exact decoding through FFmpeg, independent of the phone's own codecs.
  * Output is raw float32 streamed through a named pipe, so memory stays flat.
- * Returns null when FFmpeg can't handle the file so the caller can fall back.
+ * Returns null when FFmpeg can't handle the file (reason in [lastFailure]) so the caller can fall back.
  */
 internal object FfmpegDecoder {
+
+    /** Why FFmpeg wasn't used for the last file; shown in the UI. */
+    @Volatile
+    var lastFailure: String? = null
 
     private class Probe(
         val sampleRate: Int,
@@ -26,6 +31,8 @@ internal object FfmpegDecoder {
         val declaredBits: Int?,
         val durationSec: Double
     )
+
+    private fun tail(s: String?): String = (s ?: "").trim().replace('\n', ' ').takeLast(160)
 
     private fun mimeFor(codec: String): String = when (codec) {
         "flac" -> "audio/flac"
@@ -44,13 +51,25 @@ internal object FfmpegDecoder {
 
     private fun probe(path: String): Probe? {
         val session = FFprobeKit.getMediaInformation(path)
-        val info = session.mediaInformation ?: return null
-        val streams = info.streams ?: return null
-        val s = streams.firstOrNull { it.getStringProperty("codec_type") == "audio" } ?: return null
+        val info = session.mediaInformation
+        if (info == null) {
+            lastFailure = "ffprobe could not read the file. " + tail(session.getAllLogsAsString())
+            return null
+        }
+        val streams = info.streams
+        val s = streams?.firstOrNull { it.getStringProperty("codec_type") == "audio" }
+        if (s == null) {
+            lastFailure = "no audio stream found by ffprobe"
+            return null
+        }
 
-        val sr = s.getStringProperty("sample_rate")?.toIntOrNull() ?: return null
-        val ch = s.getStringProperty("channels")?.toIntOrNull() ?: return null
-        val codec = s.getStringProperty("codec_name") ?: return null
+        val sr = s.getStringProperty("sample_rate")?.toIntOrNull()
+        val ch = s.getStringProperty("channels")?.toIntOrNull()
+        val codec = s.getStringProperty("codec_name")
+        if (sr == null || ch == null || codec == null) {
+            lastFailure = "ffprobe gave no sample rate / channels / codec"
+            return null
+        }
         val fmt = s.getStringProperty("sample_fmt") ?: ""
         val raw = s.getStringProperty("bits_per_raw_sample")?.toIntOrNull()?.takeIf { it > 0 }
 
@@ -73,19 +92,52 @@ internal object FfmpegDecoder {
         listener: AudioDecoder.Listener,
         checkCancelled: () -> Unit
     ): AudioDecoder.DecodeInfo? {
-        // each saf: parameter is single-use, so probing and decoding get their own
-        val probeInput = FFmpegKitConfig.getSafParameterForRead(context, uri) ?: return null
-        val p = probe(probeInput) ?: return null
-        if (p.sampleRate <= 0 || p.channels <= 0 || p.channels > 16) return null
+        lastFailure = null
+        return try {
+            decodeInternal(context, uri, listener, checkCancelled)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            lastFailure = "${e.javaClass.simpleName}: ${e.message}"
+            null
+        } catch (e: LinkageError) {
+            lastFailure = "native library: ${e.message}"
+            null
+        }
+    }
 
-        val input = FFmpegKitConfig.getSafParameterForRead(context, uri) ?: return null
-        val pipe = FFmpegKitConfig.registerNewFFmpegPipe(context) ?: return null
+    private fun decodeInternal(
+        context: Context,
+        uri: Uri,
+        listener: AudioDecoder.Listener,
+        checkCancelled: () -> Unit
+    ): AudioDecoder.DecodeInfo? {
+        // each saf: parameter is single-use, so probing and decoding get their own
+        val probeInput = FFmpegKitConfig.getSafParameterForRead(context, uri)
+        if (probeInput == null) {
+            lastFailure = "could not open the file through FFmpeg (SAF)"
+            return null
+        }
+        val p = probe(probeInput) ?: return null
+        if (p.sampleRate <= 0 || p.channels <= 0 || p.channels > 16) {
+            lastFailure = "unsupported stream: ${p.sampleRate} Hz, ${p.channels} ch"
+            return null
+        }
+
+        val input = FFmpegKitConfig.getSafParameterForRead(context, uri)
+        val pipe = FFmpegKitConfig.registerNewFFmpegPipe(context)
+        if (input == null || pipe == null) {
+            lastFailure = "could not create the FFmpeg pipe"
+            return null
+        }
 
         val done = AtomicBoolean(false)
         val ok = AtomicBoolean(false)
         val opened = AtomicBoolean(false)
 
-        val command = "-hide_banner -nostdin -loglevel error -i $input -map 0:a:0 -f f32le -acodec pcm_f32le $pipe"
+        // -y: the pipe already exists, FFmpeg would otherwise refuse to "overwrite" it
+        val command =
+            "-y -hide_banner -nostdin -loglevel error -i $input -map 0:a:0 -f f32le -acodec pcm_f32le $pipe"
         val session = FFmpegKit.executeAsync(command) { s ->
             ok.set(ReturnCode.isSuccess(s.returnCode))
             done.set(true)
@@ -159,8 +211,14 @@ internal object FfmpegDecoder {
             runCatching { FFmpegKitConfig.closeFFmpegPipe(pipe) }
         }
 
-        if (total == 0L) return null
-        check(ok.get()) { "FFmpeg stopped before the end of the file" }
+        if (total == 0L) {
+            lastFailure = "FFmpeg produced no audio. " + tail(session.getAllLogsAsString())
+            return null
+        }
+        if (!ok.get()) {
+            lastFailure = "FFmpeg stopped early. " + tail(session.getAllLogsAsString())
+            return null
+        }
 
         return AudioDecoder.DecodeInfo(
             sampleRate = p.sampleRate,
