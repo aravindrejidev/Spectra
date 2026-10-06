@@ -6,14 +6,19 @@ plugins {
 
 android {
     namespace = "com.aravind.spectra"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.aravind.spectra"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0-phase1"
+        versionCode = 2
+        versionName = "0.3.0"
+
+        // FFmpeg ships arm64 + x86_64; keep only arm64 (real phones) to halve the APK size.
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     buildTypes {
@@ -49,7 +54,6 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
-    // --- Phase 2 (not wired in yet, see README): ---
-    // implementation("org.jellyfin.media3:media3-ffmpeg-decoder:<version>")
-    // implementation("androidx.media3:media3-exoplayer:1.4.1")
+    // Bit-exact decoding (community-maintained FFmpegKit fork, LGPL-3.0)
+    implementation("dev.ffmpegkit-maintained:ffmpeg:8.1.9")
 }
