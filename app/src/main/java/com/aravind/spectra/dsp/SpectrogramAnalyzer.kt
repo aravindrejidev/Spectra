@@ -10,8 +10,8 @@ private const val ROWS = 256 // BINS / 4 -> row = bin shr 2
 private const val COLS = 480
 private const val NB = 128 // frequency bands kept per frame for the edge tests
 private const val BAND_BINS = BINS / NB // 8 -> band = bin shr 3
-private const val MAX_FFT_FRAMES = 16_000
-private const val MAX_STORE = MAX_FFT_FRAMES + 512
+private const val STORE_TARGET = 16_000 // frames kept (evenly spread) for the edge-persistence test
+private const val MAX_STORE = STORE_TARGET + 512
 private const val DR_BLOCK_SUBS = 30 // 3 s of 100 ms sub-blocks
 private const val SCALE = 4.0 / FFT_SIZE // 0 dBFS sine == 0 dB
 private const val SCALE_SQ = SCALE * SCALE
@@ -125,8 +125,8 @@ private object Fft {
 
 /**
  * One-pass streaming analyzer. feed() chunks as they are decoded, then finish().
- * Memory is constant: spectrogram columns are merged pairwise whenever the fixed
- * column budget fills up, so any track length ends up in <= COLS columns.
+ * Every STFT frame (hop 1024) is analyzed. Memory is constant: spectrogram columns are merged
+ * pairwise whenever the fixed column budget fills up, so any track length ends up in <= COLS columns.
  */
 class StreamAnalyzer(
     private val sampleRate: Int,
@@ -135,8 +135,10 @@ class StreamAnalyzer(
     private val trackBits: Boolean
 ) {
     private val specCh = min(numCh, 2)
-    private val stride =
-        if (expectedFrames > 0) max(1, ceil(expectedFrames.toDouble() / HOP / MAX_FFT_FRAMES).toInt()) else 1
+
+    // only the per-frame band levels for the edge-persistence test are thinned out (memory)
+    private val storeStride =
+        if (expectedFrames > 0) max(1, ceil(expectedFrames.toDouble() / HOP / STORE_TARGET).toInt()) else 1
 
     // levels
     private val peak = DoubleArray(numCh)
@@ -145,9 +147,7 @@ class StreamAnalyzer(
     private val clipSamples = LongArray(numCh)
     private val clipRuns = IntArray(numCh)
     private val runLen = IntArray(numCh)
-    private val truePeak = DoubleArray(numCh)
-    private val tpTail = Array(numCh) { FloatArray(11) }
-    private var tpExt = FloatArray(0)
+    private val tpMeter = TruePeakMeter(numCh)
     private var bitOr = 0L
     private var totalFrames = 0L
 
@@ -199,7 +199,7 @@ class StreamAnalyzer(
             if (subFill >= subLen) flushSub()
             pos += n
         }
-        updateTruePeak(data, frames)
+        tpMeter.process(data, frames)
         if (numCh >= 2) updateStereo(data[0], data[1], frames)
         feedStft(data, frames)
         totalFrames += frames
@@ -272,34 +272,6 @@ class StreamAnalyzer(
         }
     }
 
-    /** Estimates inter-sample peaks; only evaluated where the signal is above -6 dBFS. */
-    private fun updateTruePeak(data: Array<FloatArray>, frames: Int) {
-        val need = frames + 11
-        if (tpExt.size < need) tpExt = FloatArray(need)
-        val ext = tpExt
-        val cf = TruePeak.coef
-        for (c in 0 until numCh) {
-            System.arraycopy(tpTail[c], 0, ext, 0, 11)
-            System.arraycopy(data[c], 0, ext, 11, frames)
-            var tp = truePeak[c]
-            for (n in 11 until need) {
-                val m = n - 6
-                if (abs(ext[m]) > 0.5f || abs(ext[m + 1]) > 0.5f) {
-                    val base = n - 11
-                    for (p in 1..3) {
-                        val k = cf[p]
-                        var s = 0.0
-                        for (t in 0 until 12) s += ext[base + t] * k[t]
-                        val v = abs(s)
-                        if (v > tp) tp = v
-                    }
-                }
-            }
-            truePeak[c] = tp
-            System.arraycopy(ext, frames, tpTail[c], 0, 11)
-        }
-    }
-
     private fun updateStereo(l: FloatArray, r: FloatArray, frames: Int) {
         var lr = 0.0
         var ll = 0.0
@@ -341,7 +313,6 @@ class StreamAnalyzer(
 
     private fun onFrame() {
         val f = frameIndex++
-        if (f % stride != 0) return
         var col = f / hopsPerCol
         while (col >= COLS) {
             mergeColumns()
@@ -412,7 +383,7 @@ class StreamAnalyzer(
             }
         }
 
-        if (storedFrames < MAX_STORE) {
+        if (f % storeStride == 0 && storedFrames < MAX_STORE) {
             val o = storedFrames * NB
             for (b in 0 until NB) {
                 bandDb[o + b] = (10.0 * log10(max(bandAcc[b] / BAND_BINS * SCALE_SQ, 1e-18))).toFloat()
@@ -569,7 +540,7 @@ class StreamAnalyzer(
             ChannelStats(
                 peakDb = toDb(peak[c]),
                 rmsDb = toDb(sqrt(sumSq[c] / tf)),
-                truePeakDb = toDb(max(truePeak[c], peak[c])),
+                truePeakDb = toDb(max(tpMeter.peaks[c], peak[c])),
                 clipSamples = clipSamples[c],
                 clipRuns = clipRuns[c],
                 dcOffset = dcSum[c] / tf,
@@ -577,7 +548,7 @@ class StreamAnalyzer(
             )
         }
         val peakLin = peak.maxOrNull() ?: 0.0
-        val tpLin = max(truePeak.maxOrNull() ?: 0.0, peakLin)
+        val tpLin = max(tpMeter.peaks.maxOrNull() ?: 0.0, peakLin)
         val rmsLin = sqrt(sumSq.sum() / (tf * numCh))
         val drs = chStats.mapNotNull { it.dr }
         val loud = computeLoudness(subs)
