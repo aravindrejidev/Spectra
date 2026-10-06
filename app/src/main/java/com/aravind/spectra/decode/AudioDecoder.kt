@@ -45,7 +45,7 @@ object AudioDecoder {
         } catch (e: LinkageError) {
             // native FFmpeg library unavailable: fall back
         }
-        return decodeWithMediaCodec(context, uri, listener, checkCancelled)
+        return decodeWithMediaCodec(context, uri, listener, checkCancelled).copy(note = FfmpegDecoder.lastFailure)
     }
 
     private fun decodeWithMediaCodec(
