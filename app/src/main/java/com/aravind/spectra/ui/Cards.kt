@@ -289,6 +289,10 @@ fun DetailsUnit(s: UiState.Success) {
     val a = s.analysis
     val lossless = VerdictEngine.isLossless(s.info.codecMime)
     RackPanel("Technical Data") {
+        s.info.note?.let {
+            Text("FFmpeg not used: $it", color = SpectraColors.Ink, fontSize = 12.sp, lineHeight = 16.sp)
+            Spacer(Modifier.height(8.dp))
+        }
         ReadoutGrid(
             buildList {
                 add(Readout("Codec", codecName(s.info.codecMime)))
