@@ -294,6 +294,7 @@ fun DetailsUnit(s: UiState.Success) {
                 add(Readout("Codec", codecName(s.info.codecMime)))
                 add(Readout("Sample rate", fmtHz(a.sampleRate.toDouble())))
                 add(Readout("Channels", a.channelCount.toString()))
+                add(Readout("Decoder", s.info.engine))
                 add(Readout("Decoded as", s.info.encoding))
                 add(
                     Readout(
