@@ -8,11 +8,11 @@ import android.media.MediaFormat
 import android.net.Uri
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.CancellationException
 
 /**
- * Streaming decoder: MediaExtractor + MediaCodec -> planar float chunks pushed to a
- * [Listener]. Nothing is accumulated here, so memory stays flat for any track length.
- * Handles every PCM output encoding a decoder may report and sanitizes bad values.
+ * Streaming decoder pushing planar float chunks to a [Listener]; nothing is accumulated here.
+ * FFmpeg (bit-exact) is tried first; if it can't handle the file, the phone's MediaCodec is used.
  */
 object AudioDecoder {
 
@@ -28,10 +28,31 @@ object AudioDecoder {
         val codecMime: String,
         val floatOutput: Boolean,
         val durationUs: Long,
-        val encoding: String
+        val encoding: String,
+        val declaredBits: Int? = null,
+        val engine: String = "System"
     )
 
     fun decode(context: Context, uri: Uri, listener: Listener, checkCancelled: () -> Unit): DecodeInfo {
+        try {
+            val r = FfmpegDecoder.decode(context, uri, listener, checkCancelled)
+            if (r != null) return r
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // FFmpeg could not decode this file: fall back to the system decoder
+        } catch (e: LinkageError) {
+            // native FFmpeg library unavailable: fall back
+        }
+        return decodeWithMediaCodec(context, uri, listener, checkCancelled)
+    }
+
+    private fun decodeWithMediaCodec(
+        context: Context,
+        uri: Uri,
+        listener: Listener,
+        checkCancelled: () -> Unit
+    ): DecodeInfo {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         try {
@@ -61,7 +82,7 @@ object AudioDecoder {
                 MediaCodec.createDecoderByType(mime)
             } catch (e: Exception) {
                 throw IllegalStateException(
-                    "No decoder available for $mime on this device (ALAC isn't supported yet).", e
+                    "No decoder available for $mime on this device.", e
                 )
             }
             codec = c
