@@ -229,7 +229,9 @@ object VerdictEngine {
 
         if (lossless) {
             a.effectiveBits?.let { b ->
-                f += if (b <= 16) {
+                f += if (declaredBits != null) {
+                    bitDepthFinding(declaredBits, b)
+                } else if (b <= 16) {
                     Finding("Bit depth", Severity.INFO, "$b effective bits. If this file is labeled 24-bit, it was padded from 16-bit")
                 } else {
                     Finding("Bit depth", Severity.GOOD, "$b effective bits")
