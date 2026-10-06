@@ -30,7 +30,8 @@ object AudioDecoder {
         val durationUs: Long,
         val encoding: String,
         val declaredBits: Int? = null,
-        val engine: String = "System"
+        val engine: String = "System",
+        val note: String? = null
     )
 
     fun decode(context: Context, uri: Uri, listener: Listener, checkCancelled: () -> Unit): DecodeInfo {
