@@ -33,6 +33,18 @@ private fun n1(x: Double): String = String.format(Locale.US, "%.1f", x)
 private fun n2(x: Double): String = String.format(Locale.US, "%.2f", x)
 private fun pct(x: Double): String = "${(x * 100).roundToInt()}%"
 
+private fun bitDepthFinding(declared: Int, eff: Int): Finding {
+    val gap = declared - eff
+    return when {
+        declared > 16 && gap >= 4 ->
+            Finding("Bit depth", Severity.WARN, "Labeled $declared-bit but only $eff effective bits: the extra bits are zero padding")
+        declared > 16 && gap >= 1 ->
+            Finding("Bit depth", Severity.INFO, "$declared-bit file, $eff effective bits")
+        else ->
+            Finding("Bit depth", Severity.GOOD, "$declared-bit file, $eff effective bits")
+    }
+}
+
 object VerdictEngine {
     private val LOSSLESS = setOf(
         "audio/flac", "audio/raw", "audio/alac", "audio/x-wav",
