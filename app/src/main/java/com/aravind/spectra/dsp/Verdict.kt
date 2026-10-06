@@ -34,7 +34,10 @@ private fun n2(x: Double): String = String.format(Locale.US, "%.2f", x)
 private fun pct(x: Double): String = "${(x * 100).roundToInt()}%"
 
 object VerdictEngine {
-    private val LOSSLESS = setOf("audio/flac", "audio/raw", "audio/alac", "audio/x-wav")
+    private val LOSSLESS = setOf(
+        "audio/flac", "audio/raw", "audio/alac", "audio/x-wav",
+        "audio/x-wavpack", "audio/x-ape", "audio/x-tta", "audio/x-tak", "audio/x-wmalossless"
+    )
     private val SIGNATURES = doubleArrayOf(15500.0, 16000.0, 17000.0, 17500.0, 18000.0, 19000.0)
     private val STANDARD_RATES = intArrayOf(32000, 44100, 48000, 88200, 96000, 176400, 192000)
 
