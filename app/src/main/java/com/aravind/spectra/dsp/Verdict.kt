@@ -139,7 +139,7 @@ object VerdictEngine {
         }
     }
 
-    fun evaluate(a: AnalysisResult, codecMime: String?, codecLabel: String): Verdict {
+    fun evaluate(a: AnalysisResult, codecMime: String?, codecLabel: String, declaredBits: Int? = null): Verdict {
         val c = a.cutoff
         val ratio = c.cutoffHz / c.nyquist
         val lossless = isLossless(codecMime)
