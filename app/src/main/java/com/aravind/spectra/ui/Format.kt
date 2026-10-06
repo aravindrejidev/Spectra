@@ -37,6 +37,11 @@ fun codecName(mime: String?): String = when (mime?.lowercase()) {
     "audio/vorbis" -> "Vorbis"
     "audio/opus" -> "Opus"
     "audio/alac" -> "ALAC"
+    "audio/x-wavpack" -> "WavPack"
+    "audio/x-ape" -> "Monkey's Audio"
+    "audio/x-tta" -> "TTA"
+    "audio/x-tak" -> "TAK"
+    "audio/x-wmalossless" -> "WMA Lossless"
     else -> mime ?: "Unknown"
 }
 
