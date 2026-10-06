@@ -299,7 +299,12 @@ fun DetailsUnit(s: UiState.Success) {
                 add(
                     Readout(
                         "Bit depth",
-                        if (!lossless) "n/a (lossy)" else a.effectiveBits?.let { "$it-bit eff." } ?: "16-bit (decoder)"
+                        if (!lossless) "n/a (lossy)" else when {
+                            s.info.declaredBits != null && a.effectiveBits != null ->
+                                "${s.info.declaredBits} (eff. ${a.effectiveBits})"
+                            a.effectiveBits != null -> "${a.effectiveBits}-bit eff."
+                            else -> "16-bit (decoder)"
+                        }
                     )
                 )
                 add(Readout("Duration", fmtDurationSec(a.durationSec)))
