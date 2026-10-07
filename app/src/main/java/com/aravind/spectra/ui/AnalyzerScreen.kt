@@ -181,7 +181,7 @@ private fun IdleUnits(onLoad: () -> Unit) {
             "Dynamic range (DR) & clipping",
             "Spectrogram with LIN / LOG, MID / SIDE",
             "Stereo field & effective bit depth",
-            "100% on-device, no network access"
+            "100% on-device analysis (network: update check only)"
         ).forEach {
             Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                 Led(SpectraColors.Green, true, 9.dp)
