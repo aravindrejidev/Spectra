@@ -12,8 +12,9 @@ android {
         applicationId = "com.aravind.spectra"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.3.0"
+        // The release workflow passes these in; local builds use the fallbacks.
+        versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 3
+        versionName = (project.findProperty("appVersionName") as String?) ?: "0.3.0"
 
         // FFmpeg ships arm64 + x86_64; keep only arm64 (real phones) to halve the APK size.
         ndk {
@@ -21,9 +22,27 @@ android {
         }
     }
 
+    // One stable signing key (from GitHub Secrets) so every release can update the previous one.
+    val keystorePath = System.getenv("KEYSTORE_PATH")
+    signingConfigs {
+        if (keystorePath != null && File(keystorePath).exists()) {
+            create("spectra") {
+                storeFile = File(keystorePath)
+                storeType = "pkcs12"
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfigs.findByName("spectra")?.let { signingConfig = it }
+        }
         release {
             isMinifyEnabled = false
+            signingConfigs.findByName("spectra")?.let { signingConfig = it }
         }
     }
 
