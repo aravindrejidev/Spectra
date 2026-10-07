@@ -68,6 +68,8 @@ fun AnalyzerScreen(
         }
     }
 
+    UpdatePrompt()
+
     SkeuoBackground {
         Column(
             Modifier
