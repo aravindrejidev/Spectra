@@ -1,6 +1,6 @@
 New
-- In-app updater: Spectra now tells you when a new version is available
-- Bit-exact FFmpeg decoding and exact true-peak measurement
+- Share button now opens a menu: share the report as text, or save a full-report image
+- Report images are saved to Pictures/Spectra
 
 Fixes
-- Smarter lossy-origin detection with fewer false "fake lossless" calls
+- Test builds can now be installed over release builds
