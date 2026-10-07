@@ -48,7 +48,7 @@ fun sevColor(s: Severity): Color = when (s) {
 }
 
 /** Decodes cover art pre-downsampled so huge embedded scans can't blow up memory. */
-private fun decodeSampledBitmap(bytes: ByteArray, reqSizePx: Int): Bitmap? {
+    internal fun decodeSampledBitmap(bytes: ByteArray, reqSizePx: Int): Bitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
     var sample = 1
