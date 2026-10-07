@@ -179,7 +179,9 @@ private fun IdleUnits(onLoad: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Engraved("FLAC · WAV · MP3 · AAC · OGG · OPUS", size = 11.sp, spacing = 1.5.sp)
     }
-    RackPanel("Test Suite") {
+    SelfTestUnit()
+
+    RackPanel("Checks") {
         listOf(
             "Fake-lossless & upsample detection",
             "Loudness: LUFS, LRA, true peak",
