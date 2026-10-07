@@ -29,6 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -57,6 +60,7 @@ fun AnalyzerScreen(
     val view by viewModel.view.collectAsState()
     val logScale by viewModel.logScale.collectAsState()
     val minDb by viewModel.minDb.collectAsState()
+    var showShare by remember { mutableStateOf(false) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) viewModel.analyzeFile(context, uri)
@@ -86,7 +90,8 @@ fun AnalyzerScreen(
                 is UiState.Loading -> LoadingUnit(s) { viewModel.cancel() }
                 is UiState.Error -> ErrorUnit(s.message) { viewModel.reset() }
                 is UiState.Success -> {
-                    SourceUnit(s, onNew = { viewModel.reset() }, onShare = { shareReport(context, buildReport(s)) })
+                    SourceUnit(s, onNew = { viewModel.reset() }, onShare = { showShare = true })
+                    if (showShare) ShareDialog(s, view, logScale, minDb) { showShare = false }
                     VerdictUnit(s.verdict)
                     SpectrogramUnit(
                         s.analysis, view, viewModel::setView,
