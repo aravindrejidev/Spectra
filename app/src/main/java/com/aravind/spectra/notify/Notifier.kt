@@ -148,6 +148,18 @@ object Notifier {
         )
     }
 
+    fun scanDone(context: Context, summary: String) {
+        if (AppState.foreground) return
+        ensureChannels(context)
+        post(
+            context, ID_RESULT,
+            builder(context, CH_RESULTS)
+                .setContentTitle("Batch scan finished")
+                .setContentText(summary)
+                .build()
+        )
+    }
+
     fun updateFailed(context: Context, message: String) {
         ensureChannels(context)
         post(
@@ -168,7 +180,7 @@ object Notifier {
 object ProgressHub {
     const val NOTIF_ID = 1001
 
-    enum class Kind { ANALYSIS, UPDATE }
+    enum class Kind { ANALYSIS, BATCH, UPDATE }
 
     private class Task(val id: Long, var title: String, var text: String, var progress: Float?)
 
@@ -226,8 +238,8 @@ object ProgressHub {
     fun buildNotification(context: Context): Notification {
         Notifier.ensureChannels(context)
         val analysis = tasks[Kind.ANALYSIS]
-        val primary = analysis ?: tasks[Kind.UPDATE]
-        val other = if (analysis != null) tasks[Kind.UPDATE] else null
+        val primary = analysis ?: tasks[Kind.BATCH] ?: tasks[Kind.UPDATE]
+        val other = if (primary != null && primary !== tasks[Kind.UPDATE]) tasks[Kind.UPDATE] else null
 
         val b = NotificationCompat.Builder(context, Notifier.CH_PROGRESS)
             .setSmallIcon(R.drawable.ic_stat_spectra)
