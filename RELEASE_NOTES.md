@@ -1,6 +1,7 @@
 New
-- Share button now opens a menu: share the report as text, or save a full-report image
-- Report images are saved to Pictures/Spectra
+- Self-test on the home screen: checks loudness, true peak, clipping, dynamic range, stereo, bit depth and cutoff detection with known test signals
+- Progress bar notifications while a track is analyzed and while an update downloads
+- Notifications when an analysis finishes or fails, when an update is ready to install, and when a new version is available
 
 Fixes
-- Test builds can now be installed over release builds
+- Analysis keeps running when you switch to another app
