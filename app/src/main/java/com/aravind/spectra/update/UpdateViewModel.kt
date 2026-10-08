@@ -4,6 +4,9 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.aravind.spectra.notify.AppState
+import com.aravind.spectra.notify.Notifier
+import com.aravind.spectra.notify.ProgressHub
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import kotlin.math.roundToInt
 
 class UpdateViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -73,16 +77,23 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
         job = viewModelScope.launch {
             _state.value = UpdateState.Downloading(info, 0f)
             val app = getApplication<Application>()
+            val hubId = ProgressHub.begin(app, ProgressHub.Kind.UPDATE, "Downloading Spectra v${info.version}", "Starting…")
             try {
                 val file = UpdateInstaller.download(app, info) { p ->
                     if (_state.value is UpdateState.Downloading) _state.value = UpdateState.Downloading(info, p)
+                    ProgressHub.update(app, ProgressHub.Kind.UPDATE, hubId, "${(p * 100).roundToInt()}%", p)
                 }
                 UpdateInstaller.verify(app, file)
+                ProgressHub.end(app, ProgressHub.Kind.UPDATE, hubId)
                 launchInstall(info, file)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.value = UpdateState.Failed(info, e.message ?: e.toString())
+                val msg = e.message ?: e.toString()
+                _state.value = UpdateState.Failed(info, msg)
+                if (!AppState.foreground) Notifier.updateFailed(app, msg)
+            } finally {
+                ProgressHub.end(app, ProgressHub.Kind.UPDATE, hubId)
             }
         }
     }
@@ -93,8 +104,15 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun launchInstall(info: UpdateInfo, file: File) {
+        val app = getApplication<Application>()
+        if (!AppState.foreground) {
+            // Android won't open the installer from the background: a notification does it instead
+            _state.value = UpdateState.Ready(info, file, needsPermission = false)
+            Notifier.updateReady(app, info.version, file)
+            return
+        }
         val started = try {
-            UpdateInstaller.install(getApplication<Application>(), file)
+            UpdateInstaller.install(app, file)
         } catch (e: Exception) {
             _state.value = UpdateState.Failed(info, e.message ?: e.toString())
             return
