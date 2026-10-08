@@ -72,6 +72,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     // Bit-exact decoding (community-maintained FFmpegKit fork, LGPL-3.0)
     implementation("dev.ffmpegkit-maintained:ffmpeg:8.1.9")
