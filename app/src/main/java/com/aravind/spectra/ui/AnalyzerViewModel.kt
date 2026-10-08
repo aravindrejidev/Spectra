@@ -11,6 +11,8 @@ import com.aravind.spectra.dsp.StreamAnalyzer
 import com.aravind.spectra.dsp.VerdictEngine
 import com.aravind.spectra.metadata.MetadataReader
 import com.aravind.spectra.model.UiState
+import com.aravind.spectra.notify.Notifier
+import com.aravind.spectra.notify.ProgressHub
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,13 +50,16 @@ class AnalyzerViewModel : ViewModel() {
         val app = context.applicationContext
         job = viewModelScope.launch {
             _state.value = UiState.Loading("Reading tags", null)
+            var hubId = -1L
             try {
                 val (name, size) = withContext(Dispatchers.IO) { queryNameAndSize(app, uri) }
+                hubId = ProgressHub.begin(app, ProgressHub.Kind.ANALYSIS, "Analyzing $name", "Reading tags")
                 val tags = withContext(Dispatchers.IO) {
                     runCatching { MetadataReader.read(app, uri) }.getOrElse { emptyTags() }
                 }
 
                 _state.value = UiState.Loading("Decoding & measuring", 0f)
+                ProgressHub.update(app, ProgressHub.Kind.ANALYSIS, hubId, "Decoding & measuring", null)
                 val t0 = SystemClock.elapsedRealtime()
                 val result = withContext(Dispatchers.Default) {
                     val ctx = coroutineContext
@@ -72,12 +77,14 @@ class AnalyzerViewModel : ViewModel() {
                                 if (pct != lastPct) {
                                     lastPct = pct
                                     _state.value = UiState.Loading("Decoding & measuring", progress)
+                                    ProgressHub.update(app, ProgressHub.Kind.ANALYSIS, hubId, "Decoding & measuring · $pct%", progress)
                                 }
                             }
                         }
                     }) { ctx.ensureActive() }
 
                     _state.value = UiState.Loading("Finalizing", 1f)
+                    ProgressHub.update(app, ProgressHub.Kind.ANALYSIS, hubId, "Finalizing…", null)
                     val an = requireNotNull(analyzer) { "No audio could be decoded from this file" }.finish()
                     Triple(info, an, VerdictEngine.evaluate(an, info.codecMime, codecName(info.codecMime), info.declaredBits))
                 }
@@ -91,14 +98,20 @@ class AnalyzerViewModel : ViewModel() {
                     verdict = result.third,
                     tookMs = SystemClock.elapsedRealtime() - t0
                 )
+                val lufs = result.second.lufs?.let { " · ${f1(it)} LUFS" } ?: ""
+                Notifier.analysisDone(app, tags.title ?: name, result.third.headline + lufs)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: OutOfMemoryError) {
-                _state.value = UiState.Error(
-                    "Ran out of memory analyzing this file. Close other apps and try again."
-                )
+                val msg = "Ran out of memory analyzing this file. Close other apps and try again."
+                _state.value = UiState.Error(msg)
+                Notifier.analysisFailed(app, msg)
             } catch (e: Exception) {
-                _state.value = UiState.Error(e.message ?: e.toString())
+                val msg = e.message ?: e.toString()
+                _state.value = UiState.Error(msg)
+                Notifier.analysisFailed(app, msg)
+            } finally {
+                if (hubId >= 0) ProgressHub.end(app, ProgressHub.Kind.ANALYSIS, hubId)
             }
         }
     }
