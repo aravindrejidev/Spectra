@@ -240,7 +240,7 @@ object FolderScanner {
 
         fun walk(docId: String, prefix: String, depth: Int) {
             if (depth > 10 || out.size >= MAX_FILES) return
-            val children = DocumentsContract.buildChildDocumentsUriForTreeUri(tree, docId)
+            val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId)
             val cols = arrayOf(
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 DocumentsContract.Document.COLUMN_DISPLAY_NAME,
