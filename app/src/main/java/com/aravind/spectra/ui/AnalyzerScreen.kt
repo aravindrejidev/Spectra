@@ -60,6 +60,8 @@ fun AnalyzerScreen(
     val view by viewModel.view.collectAsState()
     val logScale by viewModel.logScale.collectAsState()
     val minDb by viewModel.minDb.collectAsState()
+    val batchVm: BatchViewModel = viewModel()
+    val batch by batchVm.state.collectAsState()
     var showShare by remember { mutableStateOf(false) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -86,7 +88,12 @@ fun AnalyzerScreen(
         ) {
             Spacer(Modifier.height(4.dp))
             HeaderUnit(state)
-            when (val s = state) {
+            if (batch.visible) {
+                BatchScreen(batchVm) { uri ->
+                    batchVm.hide()
+                    viewModel.analyzeFile(context, uri)
+                }
+            } else when (val s = state) {
                 is UiState.Idle -> IdleUnits { picker.launch(arrayOf("audio/*")) }
                 is UiState.Loading -> LoadingUnit(s) { viewModel.cancel() }
                 is UiState.Error -> ErrorUnit(s.message) { viewModel.reset() }
@@ -180,6 +187,8 @@ private fun IdleUnits(onLoad: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Engraved("FLAC · WAV · MP3 · AAC · OGG · OPUS", size = 11.sp, spacing = 1.5.sp)
     }
+    BatchLauncherUnit()
+
     SelfTestUnit()
 
     RackPanel("Checks") {
