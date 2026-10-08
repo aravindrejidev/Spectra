@@ -73,6 +73,7 @@ fun AnalyzerScreen(
     }
 
     UpdatePrompt()
+    NotificationPermissionRequest()
 
     SkeuoBackground {
         Column(
