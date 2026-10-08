@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Used only by the in-app updater: check GitHub for new releases, download the APK, hand it to Android's installer -->
+    <!-- In-app updater: check GitHub for new releases, download the APK, hand it to Android's installer -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- Progress and result notifications; the foreground service keeps a running job alive -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:allowBackup="true"
@@ -33,6 +38,11 @@
                 <data android:mimeType="audio/*" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".notify.WorkService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
