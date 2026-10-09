@@ -107,6 +107,7 @@ fun AnalyzerScreen(
                         minDb, viewModel::setMinDb
                     )
                     SpectrumUnit(s.analysis)
+                    TimelineUnit(s.analysis)
                     LevelsUnit(s.analysis)
                     DetailsUnit(s)
                 }
