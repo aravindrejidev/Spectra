@@ -139,6 +139,20 @@ fun BatchScreen(vm: BatchViewModel, onOpen: (Uri) -> Unit) {
         }
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (total > 0 && !s.running) {
+                HwButton("PDF", Modifier.weight(1f), height = 40.dp) {
+                    scope.launch {
+                        try {
+                            val where = PdfExport.saveBatchPdf(context, s.label, s.items)
+                            Toast.makeText(context, "PDF saved to $where", Toast.LENGTH_LONG).show()
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Could not save the PDF: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
             HwButton("BACK", Modifier.weight(1f), height = 40.dp, onClick = vm::hide)
             HwButton("CLEAR", Modifier.weight(1f), height = 40.dp, onClick = vm::close)
         }
