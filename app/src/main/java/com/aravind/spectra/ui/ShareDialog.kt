@@ -57,7 +57,7 @@ fun ShareDialog(
                 if (busy) {
                     GlassScreen {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                            Lcd("RENDERING IMAGE", size = 14.sp)
+                            Lcd("BUILDING REPORT", size = 14.sp)
                             Spacer(Modifier.height(10.dp))
                             Lcd("Building the full report, a few seconds…", color = SpectraColors.PhosphorDim, size = 12.sp)
                         }
@@ -81,6 +81,24 @@ fun ShareDialog(
                                 Toast.makeText(context, "Could not save the image: ${e.message}", Toast.LENGTH_LONG).show()
                             } catch (e: OutOfMemoryError) {
                                 Toast.makeText(context, "Not enough memory to build the image", Toast.LENGTH_LONG).show()
+                            }
+                            busy = false
+                            onDismiss()
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    HwButton("SAVE AS PDF", Modifier.fillMaxWidth(), height = 52.dp) {
+                        busy = true
+                        scope.launch {
+                            try {
+                                val where = PdfExport.saveReportPdf(context, s, view, logScale, minDb)
+                                Toast.makeText(context, "PDF saved to $where", Toast.LENGTH_LONG).show()
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Could not save the PDF: ${e.message}", Toast.LENGTH_LONG).show()
+                            } catch (e: OutOfMemoryError) {
+                                Toast.makeText(context, "Not enough memory to build the PDF", Toast.LENGTH_LONG).show()
                             }
                             busy = false
                             onDismiss()
