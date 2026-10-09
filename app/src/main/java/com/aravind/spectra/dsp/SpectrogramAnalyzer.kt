@@ -73,7 +73,9 @@ data class AnalysisResult(
     val stereo: StereoStats?,
     val cutoff: CutoffResult,
     val avgSpectrumDb: FloatArray,
-    val views: Map<String, ChannelSpectrogram> // all, ch1, ch2, mid, side
+    val views: Map<String, ChannelSpectrogram>, // all, ch1, ch2, mid, side
+    val loudnessSeries: FloatArray, // short-term LUFS, one value per second (NaN where silent)
+    val clipSeconds: IntArray // clipped samples in each second
 ) {
     val durationSec: Double get() = totalFrames.toDouble() / sampleRate
 }
@@ -189,6 +191,34 @@ class StreamAnalyzer(
     private val bandAcc = DoubleArray(NB)
     private var storedFrames = 0
 
+    // per-second clipping counts and short-term loudness for the timeline
+    private var clipBuckets = IntArray(1024)
+    private var clipBucketCount = 0
+
+    private fun addClip(index: Long, n: Int) {
+        val sec = (index / sampleRate).toInt()
+        if (sec >= clipBuckets.size) clipBuckets = clipBuckets.copyOf(max(sec + 1, clipBuckets.size * 2))
+        clipBuckets[sec] += n
+        if (sec + 1 > clipBucketCount) clipBucketCount = sec + 1
+    }
+
+    /** Short-term (3 s window) loudness in LUFS, one value per second; NaN where silent. */
+    private fun shortTermSeries(): FloatArray {
+        val n = subs.size
+        if (n < 30) return FloatArray(0)
+        val count = (n - 30) / 10 + 1
+        val out = FloatArray(count)
+        for (k in 0 until count) {
+            var s = 0.0
+            val start = k * 10
+            for (j in start until start + 30) s += subs[j]
+            val ms = s / 30.0
+            val l = if (ms > 0.0) -0.691 + 10.0 * log10(ms) else Double.NEGATIVE_INFINITY
+            out[k] = if (l > -70.0) l.toFloat() else Float.NaN
+        }
+        return out
+    }
+
     fun feed(data: Array<FloatArray>, frames: Int) {
         if (frames <= 0) return
         var pos = 0
@@ -217,6 +247,7 @@ class StreamAnalyzer(
             var ksq = 0.0
             var dc = 0.0
             var cs = clipSamples[c]
+            val csBefore = cs
             var runs = clipRuns[c]
             var run = runLen[c]
             var bits = 0L
@@ -244,6 +275,7 @@ class StreamAnalyzer(
             drSumSq[c] += sq
             dcSum[c] += dc
             clipSamples[c] = cs
+            if (cs > csBefore) addClip(totalFrames + start, (cs - csBefore).toInt())
             clipRuns[c] = runs
             runLen[c] = run
             subAcc[c] += ksq
@@ -610,7 +642,9 @@ class StreamAnalyzer(
             stereo = stereo,
             cutoff = cutoff,
             avgSpectrumDb = avgDb,
-            views = views
+            views = views,
+            loudnessSeries = shortTermSeries(),
+            clipSeconds = clipBuckets.copyOf(clipBucketCount)
         )
     }
 }
