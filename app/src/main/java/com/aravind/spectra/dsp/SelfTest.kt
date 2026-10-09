@@ -151,6 +151,36 @@ object SelfTest {
                 ok
             )
         },
+        Case("Timeline: loudness steps") {
+            val sr = 48000
+            val x = concat(sine(sr, 30.0, 997.0, amp(-20.0)), sine(sr, 30.0, 997.0, amp(-30.0)))
+            val ser = analyze(sr, arrayOf(x, x)).loudnessSeries
+            if (ser.size < 50) {
+                Check("about 58 values", "${ser.size} values", false)
+            } else {
+                val v1 = ser[5].toDouble()
+                val v2 = ser[45].toDouble()
+                Check(
+                    "−20.00 and −30.00 LUFS ± 0.2",
+                    "${f2(v1)} and ${f2(v2)} LUFS",
+                    abs(v1 + 20.0) <= 0.2 && abs(v2 + 30.0) <= 0.2
+                )
+            }
+        },
+        Case("Timeline: clipped samples per second") {
+            val sr = 48000
+            val x = FloatArray(sr * 5) { (1.5 * sin(2.0 * PI * 997.0 * it / sr)).coerceIn(-1.0, 1.0).toFloat() }
+            val cs = analyze(sr, arrayOf(x)).clipSeconds
+            if (cs.size < 4) {
+                Check("5 values of about 25730", "${cs.size} values", false)
+            } else {
+                Check(
+                    "25730 ± 30 per second",
+                    "${cs[1]}, ${cs[2]}, ${cs[3]}",
+                    abs(cs[1] - 25730) <= 30 && abs(cs[2] - 25730) <= 30
+                )
+            }
+        },
         Case("Cutoff edge: none in full-band noise") {
             val sr = 44100
             val rnd = Random(9)
