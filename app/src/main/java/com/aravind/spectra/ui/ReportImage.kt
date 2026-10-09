@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Density
@@ -87,6 +88,7 @@ object ReportImage {
             verdictBlock(s.verdict),
             spectrogramBlock(a, specBmp, logScale, minDb, viewLabel(a, view)),
             spectrumBlock(a),
+            timelineBlock(a),
             levelsBlock(a),
             techBlock(s)
         )
@@ -110,6 +112,86 @@ object ReportImage {
             )
         }
         img.asAndroidBitmap()
+    }
+
+    /** The report split into A4-shaped pages (1080 x 1528 px). Sections stay whole where they fit. */
+    suspend fun renderPages(
+        context: Context,
+        s: UiState.Success,
+        view: String,
+        logScale: Boolean,
+        minDb: Float
+    ): List<Bitmap> = withContext(Dispatchers.Default) {
+        val a = s.analysis
+        val version = UpdateChecker.currentVersion(context)
+        val whenStr = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date())
+        val cover = s.tags.coverArt?.let { decodeSampledBitmap(it, 500) }
+        val spec = a.views[view] ?: a.views.getValue("all")
+        val specBmp = buildSpectrogramBitmap(spec, a.sampleRate / 2.0, logScale, minDb, 0f)
+
+        val blocks = listOf(
+            headerBlock(version, whenStr),
+            sourceBlock(s, cover),
+            verdictBlock(s.verdict),
+            spectrogramBlock(a, specBmp, logScale, minDb, viewLabel(a, view)),
+            spectrumBlock(a),
+            timelineBlock(a),
+            levelsBlock(a),
+            techBlock(s)
+        )
+
+        val pageW = IMG_W
+        val pageH = IMG_W * 842f / 595f
+        val cap = pageH - MARGIN - 70f
+
+        // slice < 0: whole section at y; slice >= 0: part k of a section taller than a page
+        val pages = ArrayList<ArrayList<Triple<Block, Float, Int>>>()
+        var cur = ArrayList<Triple<Block, Float, Int>>()
+        var y = MARGIN
+        for (b in blocks) {
+            if (b.height > cap) {
+                if (cur.isNotEmpty()) {
+                    pages += cur
+                    cur = ArrayList()
+                }
+                val n = ceil(b.height / cap).toInt()
+                for (k in 0 until n) pages += arrayListOf(Triple(b, MARGIN, k))
+                y = MARGIN
+            } else {
+                if (y + b.height > MARGIN + cap && cur.isNotEmpty()) {
+                    pages += cur
+                    cur = ArrayList()
+                    y = MARGIN
+                }
+                cur += Triple(b, y, -1)
+                y += b.height + GAP
+            }
+        }
+        if (cur.isNotEmpty()) pages += cur
+
+        val total = pages.size
+        pages.mapIndexed { idx, items ->
+            val img = ImageBitmap(pageW, pageH.toInt())
+            val canvas = Canvas(img)
+            CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, canvas, Size(pageW.toFloat(), pageH)) {
+                drawBackdrop(pageH)
+                for ((b, top, slice) in items) {
+                    if (slice < 0) {
+                        b.draw(this, top)
+                    } else {
+                        clipRect(0f, MARGIN, size.width, MARGIN + cap) {
+                            b.draw(this, MARGIN - slice * cap)
+                        }
+                    }
+                }
+                ptext(
+                    "Page ${idx + 1} / $total",
+                    size.width / 2f, pageH - 26f,
+                    tp(24f, Color(0xFFB9A58F), mono = true, align = Paint.Align.CENTER)
+                )
+            }
+            img.asAndroidBitmap()
+        }
     }
 
     /** Saves the image to Pictures/Spectra (visible in the gallery). Returns where it went. */
@@ -577,6 +659,105 @@ private fun spectrumBlock(a: AnalysisResult): Block {
                 if (right) cx - 10f else cx + 10f, top + 26f,
                 tp(22f, SpectraColors.Amber, mono = true, align = if (right) Paint.Align.RIGHT else Paint.Align.LEFT)
             )
+        }
+    }
+}
+
+private fun timelineBlock(a: AnalysisResult): Block {
+    val gh = 400f
+    return panel("Loudness over time", SpectraColors.Phosphor, gh) { x, y, w ->
+        glass(x, y, w, gh)
+        val series = a.loudnessSeries
+        val dur = a.durationSec
+        if (series.size < 2) {
+            ptext("Needs at least 4 seconds of audio", x + 30f, y + 70f, tp(26f, DIM, mono = true))
+        } else {
+            val left = x + 96f
+            val top = y + 26f
+            val pw = w - 96f - 28f
+            val ph = 240f
+            val stripH = 36f
+
+            var mn = Float.MAX_VALUE
+            var mx = -Float.MAX_VALUE
+            for (v in series) {
+                if (!v.isNaN()) {
+                    if (v < mn) mn = v
+                    if (v > mx) mx = v
+                }
+            }
+            if (mn > mx) {
+                mn = -30f
+                mx = -10f
+            }
+            val lo = kotlin.math.floor((mn - 2f) / 6f) * 6f
+            var hi = ceil((mx + 2f) / 6f) * 6f
+            if (hi - lo < 12f) hi = lo + 12f
+            val hiF = hi
+            fun yOf(db: Float): Float = top + ph * (1f - ((db - lo) / (hiF - lo)).coerceIn(0f, 1f))
+            fun xOf(t: Double): Float = left + pw * (t / dur).toFloat().coerceIn(0f, 1f)
+
+            val grid = SpectraColors.Phosphor.copy(alpha = 0.13f)
+            val rp = tp(22f, DIM, mono = true, align = Paint.Align.RIGHT)
+            var g = lo
+            while (g <= hiF + 0.01f) {
+                val gy = yOf(g)
+                drawLine(grid, Offset(left, gy), Offset(left + pw, gy), 2f)
+                ptext(g.roundToInt().toString(), left - 12f, gy + 8f, rp)
+                g += 6f
+            }
+
+            val line = Path()
+            var pen = false
+            for (i in series.indices) {
+                val v = series[i]
+                if (v.isNaN()) {
+                    pen = false
+                    continue
+                }
+                val px = xOf(i + 1.5)
+                val py = yOf(v)
+                if (!pen) {
+                    line.moveTo(px, py)
+                    pen = true
+                } else {
+                    line.lineTo(px, py)
+                }
+            }
+            drawPath(line, SpectraColors.Phosphor, style = Stroke(3f, join = StrokeJoin.Round))
+
+            a.lufs?.let { l ->
+                val iy = yOf(l.toFloat())
+                drawLine(
+                    SpectraColors.Amber, Offset(left, iy), Offset(left + pw, iy), 3f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(18f, 14f))
+                )
+                ptext("I ${f1(l)}", left + 8f, iy - 8f, tp(22f, SpectraColors.Amber, mono = true))
+            }
+
+            val stripTop = top + ph + 14f
+            for (sec in a.clipSeconds.indices) {
+                val c = a.clipSeconds[sec]
+                if (c <= 0) continue
+                val frac = (kotlin.math.log10(1.0 + c) / 4.0).toFloat().coerceIn(0.2f, 1f)
+                val bx = xOf(sec + 0.5)
+                drawLine(
+                    SpectraColors.Red,
+                    Offset(bx, stripTop + stripH),
+                    Offset(bx, stripTop + stripH * (1f - frac)),
+                    4f
+                )
+            }
+            ptext("clip", left - 12f, stripTop + stripH, tp(20f, SpectraColors.Red, mono = true, align = Paint.Align.RIGHT))
+
+            for (i in 0..4) {
+                val al = when (i) {
+                    0 -> Paint.Align.LEFT
+                    4 -> Paint.Align.RIGHT
+                    else -> Paint.Align.CENTER
+                }
+                ptext(fmtDurationSec(dur * i / 4.0), left + pw * i / 4f, stripTop + stripH + 34f, tp(22f, DIM, mono = true, align = al))
+            }
         }
     }
 }
