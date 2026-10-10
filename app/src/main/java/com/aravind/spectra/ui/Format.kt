@@ -58,6 +58,11 @@ fun buildReport(s: UiState.Success): String {
         v.estimatedSource?.let { appendLine("Estimated source: $it") }
         appendLine()
         appendLine("Codec: ${codecName(s.info.codecMime)}  Decoder: ${s.info.engine}")
+        s.info.facts?.let { fct ->
+            appendLine("Container: ${fct.formatLong ?: fct.formatName ?: "unknown"}" + (fct.profile?.let { "  Profile: $it" } ?: ""))
+            fct.bitrateKbps?.let { appendLine("Bitrate: $it kbps") }
+            fct.encoder?.let { appendLine("Encoder tag: $it") }
+        }
         appendLine("Bit depth: " + (s.info.declaredBits?.let { "$it-bit file" } ?: "unknown") + ", effective " + (a.effectiveBits?.toString() ?: "—"))
         appendLine("Sample rate: ${fmtHz(a.sampleRate.toDouble())}  Channels: ${a.channelCount}")
         appendLine("Duration: ${fmtDurationSec(a.durationSec)}  Size: ${fmtBytes(s.fileSizeBytes)}")
