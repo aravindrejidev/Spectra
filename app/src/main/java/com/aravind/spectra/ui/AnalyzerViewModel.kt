@@ -86,7 +86,7 @@ class AnalyzerViewModel : ViewModel() {
                     _state.value = UiState.Loading("Finalizing", 1f)
                     ProgressHub.update(app, ProgressHub.Kind.ANALYSIS, hubId, "Finalizing…", null)
                     val an = requireNotNull(analyzer) { "No audio could be decoded from this file" }.finish()
-                    Triple(info, an, VerdictEngine.evaluate(an, info.codecMime, codecName(info.codecMime), info.declaredBits))
+                    Triple(info, an, VerdictEngine.evaluate(an, info.codecMime, codecName(info.codecMime), info.declaredBits, info.facts)
                 }
 
                 _state.value = UiState.Success(
