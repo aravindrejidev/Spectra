@@ -1,5 +1,6 @@
 package com.aravind.spectra.dsp
 
+import com.aravind.spectra.decode.FileFacts
 import java.util.Locale
 import java.util.Random
 import kotlin.math.*
@@ -151,6 +152,18 @@ object SelfTest {
                 ok
             )
         },
+        Case("Verdict: 320 kbps MP3 cut at 16 kHz") {
+            val sr = 44100
+            val y = lowpassNoise(sr, 6.0, 16000.0, 7L)
+            val v = VerdictEngine.evaluate(analyze(sr, arrayOf(y, y)), "audio/mpeg", "MP3", null, fakeFacts(320))
+            Check("Inflated bitrate", v.headline, v.headline == "Inflated bitrate")
+        },
+        Case("Verdict: 128 kbps MP3 cut at 16 kHz") {
+            val sr = 44100
+            val y = lowpassNoise(sr, 6.0, 16000.0, 7L)
+            val v = VerdictEngine.evaluate(analyze(sr, arrayOf(y, y)), "audio/mpeg", "MP3", null, fakeFacts(128))
+            Check("Lossy source", v.headline, v.headline == "Lossy source")
+        },
         Case("Timeline: loudness steps") {
             val sr = 48000
             val x = concat(sine(sr, 30.0, 997.0, amp(-20.0)), sine(sr, 30.0, 997.0, amp(-30.0)))
@@ -191,6 +204,8 @@ object SelfTest {
     )
 
     // ------------------------------------------------------------ helpers
+
+    private fun fakeFacts(kbps: Int) = FileFacts(null, null, null, null, null, null, kbps, 1, false, null, emptyList())
 
     private fun loudness(sr: Int): Check {
         val x = sine(sr, 20.0, 997.0, amp(-23.0))
