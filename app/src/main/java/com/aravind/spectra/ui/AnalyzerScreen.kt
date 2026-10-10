@@ -109,6 +109,7 @@ fun AnalyzerScreen(
                     SpectrumUnit(s.analysis)
                     TimelineUnit(s.analysis)
                     LevelsUnit(s.analysis)
+                    FileFactsUnit(s)
                     DetailsUnit(s)
                 }
             }
