@@ -1,5 +1,6 @@
 package com.aravind.spectra.dsp
 
+import com.aravind.spectra.decode.FileFacts
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
@@ -74,7 +75,27 @@ object VerdictEngine {
     private fun rateLabel(r: Int): String =
         if (r % 1000 == 0) "${r / 1000} kHz" else String.format(Locale.US, "%.1f kHz", r / 1000.0)
 
-    private fun lossyContainer(c: CutoffResult, codecLabel: String): Auth {
+    private fun lossyContainer(c: CutoffResult, codecLabel: String, mime: String?, facts: FileFacts?): Auth {
+        val kbps = facts?.bitrateKbps
+        val mp3OrAac = mime == "audio/mpeg" || mime == "audio/mp4a-latm"
+        if (mp3OrAac && kbps != null && kbps >= 224 && c.hasEdge && c.cutoffHz < 18000.0) {
+            var s = 60
+            s += if (c.cutoffHz < 16800.0) 12 else 5
+            if (kbps >= 288) s += 8
+            if (c.strengthDb >= 30.0) s += 5
+            s = s.coerceIn(55, 92)
+            return Auth(
+                Severity.WARN, "Inflated bitrate",
+                "Declared ≈ $kbps kbps, but the spectrum is cut at ${khz(c.cutoffHz)}, which is typical of a " +
+                    "${guessLossyBitrate(c.cutoffHz)} source re-encoded at a higher bitrate. " +
+                    "(A recording that never had content above that frequency would look the same.)",
+                s, guessLossyBitrate(c.cutoffHz) + " source"
+            )
+        }
+        return lossyContainerBasic(c, codecLabel)
+    }
+
+    private fun lossyContainerBasic(c: CutoffResult, codecLabel: String): Auth {
         val extra = if (c.hasEdge) "Brick-wall edge at ${khz(c.cutoffHz)}." else "No brick-wall cutoff (gradual roll-off)."
         return Auth(
             Severity.INFO, "Lossy source",
@@ -151,13 +172,19 @@ object VerdictEngine {
         }
     }
 
-    fun evaluate(a: AnalysisResult, codecMime: String?, codecLabel: String, declaredBits: Int? = null): Verdict {
+    fun evaluate(
+        a: AnalysisResult,
+        codecMime: String?,
+        codecLabel: String,
+        declaredBits: Int? = null,
+        facts: FileFacts? = null
+    ): Verdict {
         val c = a.cutoff
         val ratio = c.cutoffHz / c.nyquist
         val lossless = isLossless(codecMime)
 
         val auth: Auth = when {
-            !lossless -> lossyContainer(c, codecLabel)
+            !lossless -> lossyContainer(c, codecLabel, codecMime, facts)
             !c.hasEdge -> Auth(
                 Severity.GOOD, "No lossy signature",
                 "No brick-wall cutoff found; the spectrum reaches the top of the band smoothly. " +
@@ -237,6 +264,22 @@ object VerdictEngine {
                     Finding("Bit depth", Severity.GOOD, "$b effective bits")
                 }
             }
+        }
+
+        if (facts != null) {
+            val enc = facts.encoder
+            if (enc != null) {
+                val low = enc.lowercase()
+                f += when {
+                    lossless && ("lame" in low || "mp3" in low) ->
+                        Finding("Encoder tag", Severity.WARN, "\"$enc\" is an MP3 encoder, so this lossless file may have been made from an MP3")
+                    lossless && ("lavf" in low || "ffmpeg" in low || "libav" in low) ->
+                        Finding("Encoder tag", Severity.INFO, "\"$enc\": converted with FFmpeg, so the original format can't be told from the tag")
+                    else -> Finding("Encoder tag", Severity.INFO, "\"$enc\"")
+                }
+            }
+            val k = facts.bitrateKbps
+            if (k != null && !lossless) f += Finding("Bitrate", Severity.INFO, "Declared bitrate ≈ $k kbps")
         }
 
         val dc = a.channels.maxOf { abs(it.dcOffset) }
