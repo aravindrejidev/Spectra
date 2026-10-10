@@ -832,6 +832,8 @@ private fun techItems(s: UiState.Success): List<Readout> {
     items += Readout("Sample rate", fmtHz(a.sampleRate.toDouble()))
     items += Readout("Channels", a.channelCount.toString())
     items += Readout("Decoder", s.info.engine)
+    s.info.facts?.bitrateKbps?.let { items += Readout("Bitrate", "$it kbps") }
+    s.info.facts?.encoder?.let { items += Readout("Encoder", it.take(18)) }
     items += Readout("Decoded as", s.info.encoding)
     items += Readout(
         "Bit depth",
