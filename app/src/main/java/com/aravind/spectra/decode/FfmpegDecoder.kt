@@ -5,6 +5,9 @@ import android.net.Uri
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.arthenica.ffmpegkit.FFprobeKit
+import com.arthenica.ffmpegkit.MediaInformation
+import com.arthenica.ffmpegkit.StreamInformation
+import org.json.JSONObject
 import com.arthenica.ffmpegkit.ReturnCode
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -29,7 +32,8 @@ internal object FfmpegDecoder {
         val channels: Int,
         val codec: String,
         val declaredBits: Int?,
-        val durationSec: Double
+        val durationSec: Double,
+        val facts: FileFacts
     )
 
     private fun tail(s: String?): String = (s ?: "").trim().replace('\n', ' ').takeLast(160)
@@ -47,6 +51,45 @@ internal object FfmpegDecoder {
         "tak" -> "audio/x-tak"
         "wmalossless" -> "audio/x-wmalossless"
         else -> if (codec.startsWith("pcm_")) "audio/raw" else "audio/x-$codec"
+    }
+
+    private fun factsOf(info: MediaInformation, s: StreamInformation, streams: List<StreamInformation>): FileFacts {
+        fun kbps(v: String?): Int? = v?.toLongOrNull()?.let { (it / 1000L).toInt() }?.takeIf { it > 0 }
+
+        val tags = LinkedHashMap<String, String>()
+        fun addTags(json: String?) {
+            if (json.isNullOrEmpty()) return
+            try {
+                val o = JSONObject(json)
+                val keys = o.keys()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    val v = o.optString(k)
+                    if (v.isNotEmpty() && !tags.containsKey(k.lowercase())) tags[k.lowercase()] = v.take(160)
+                }
+            } catch (e: Exception) {
+                // tags are optional
+            }
+        }
+        addTags(s.getStringProperty("tags"))
+        addTags(info.getStringProperty("tags"))
+
+        val encoder = tags["encoder"] ?: tags["encoded_by"] ?: tags["encoding_tool"] ?: tags["software"]
+        val stream = kbps(s.getStringProperty("bit_rate"))
+        val overall = kbps(info.getStringProperty("bit_rate"))
+        return FileFacts(
+            formatName = info.getStringProperty("format_name"),
+            formatLong = info.getStringProperty("format_long_name"),
+            codecLong = s.getStringProperty("codec_long_name"),
+            profile = s.getStringProperty("profile"),
+            channelLayout = s.getStringProperty("channel_layout"),
+            sampleFormat = s.getStringProperty("sample_fmt"),
+            bitrateKbps = stream ?: overall,
+            streamCount = streams.size,
+            hasCoverStream = streams.any { it.getStringProperty("codec_type") == "video" },
+            encoder = encoder,
+            tags = tags.entries.map { it.key to it.value }
+        )
     }
 
     private fun probe(path: String): Probe? {
@@ -83,7 +126,7 @@ internal object FfmpegDecoder {
         val dur = info.duration?.toDoubleOrNull()
             ?: s.getStringProperty("duration")?.toDoubleOrNull()
             ?: 0.0
-        return Probe(sr, ch, codec, declared, dur)
+        return Probe(sr, ch, codec, declared, dur, factsOf(info, s, streams ?: emptyList()))
     }
 
     fun decode(
@@ -228,7 +271,8 @@ internal object FfmpegDecoder {
             durationUs = (p.durationSec * 1_000_000.0).toLong(),
             encoding = "FFmpeg Float32",
             declaredBits = p.declaredBits,
-            engine = "FFmpeg"
+            engine = "FFmpeg",
+            facts = p.facts
         )
     }
 }
