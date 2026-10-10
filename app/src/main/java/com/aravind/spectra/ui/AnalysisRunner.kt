@@ -49,7 +49,7 @@ object AnalysisRunner {
 
             onProgress("Finalizing", null)
             val an = requireNotNull(analyzer) { "No audio could be decoded from this file" }.finish()
-            val verdict = VerdictEngine.evaluate(an, info.codecMime, codecName(info.codecMime), info.declaredBits)
+            val verdict = VerdictEngine.evaluate(an, info.codecMime, codecName(info.codecMime), info.declaredBits, info.facts)
             UiState.Success(
                 fileName = name,
                 fileSizeBytes = size,
