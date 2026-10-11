@@ -53,6 +53,27 @@ internal object FfmpegDecoder {
         else -> if (codec.startsWith("pcm_")) "audio/raw" else "audio/x-$codec"
     }
 
+    private fun clean(v: String?): String? =
+        v?.trim()?.takeIf {
+            it.isNotEmpty() && !it.equals("unknown", ignoreCase = true) && !it.equals("n/a", ignoreCase = true)
+        }
+
+    private fun friendlyFormat(name: String?): String? {
+        if (name == null) return null
+        val n = name.lowercase()
+        return when {
+            "mp4" in n || "m4a" in n || "mov" in n -> "MP4 / M4A (QuickTime)"
+            n == "flac" -> "FLAC"
+            n.startsWith("wav") -> "WAV"
+            n == "mp3" -> "MP3"
+            n.startsWith("ogg") -> "Ogg"
+            "matroska" in n || "webm" in n -> "Matroska / WebM"
+            n.startsWith("aiff") -> "AIFF"
+            n == "aac" -> "AAC (ADTS)"
+            else -> name
+        }
+    }
+
     private fun factsOf(info: MediaInformation, s: StreamInformation, streams: List<StreamInformation>): FileFacts {
         fun kbps(v: String?): Int? = v?.toLongOrNull()?.let { (it / 1000L).toInt() }?.takeIf { it > 0 }
 
@@ -78,12 +99,13 @@ internal object FfmpegDecoder {
         val stream = kbps(s.getStringProperty("bit_rate"))
         val overall = kbps(info.getStringProperty("bit_rate"))
         return FileFacts(
-            formatName = info.getStringProperty("format_name"),
-            formatLong = info.getStringProperty("format_long_name"),
-            codecLong = s.getStringProperty("codec_long_name"),
-            profile = s.getStringProperty("profile"),
-            channelLayout = s.getStringProperty("channel_layout"),
-            sampleFormat = s.getStringProperty("sample_fmt"),
+            formatName = clean(info.getStringProperty("format_name")),
+            formatLong = clean(info.getStringProperty("format_long_name"))
+                ?: friendlyFormat(clean(info.getStringProperty("format_name"))),
+            codecLong = clean(s.getStringProperty("codec_long_name")),
+            profile = clean(s.getStringProperty("profile")),
+            channelLayout = clean(s.getStringProperty("channel_layout")),
+            sampleFormat = clean(s.getStringProperty("sample_fmt")),
             bitrateKbps = stream ?: overall,
             streamCount = streams.size,
             hasCoverStream = streams.any { it.getStringProperty("codec_type") == "video" },
