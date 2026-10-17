@@ -220,7 +220,7 @@ fun SpectrumUnit(a: AnalysisResult) {
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            "A brick-wall drop (amber line) well below Nyquist is the classic fingerprint of a lossy encode.",
+            "The amber line marks a brick-wall drop when one was found. Well below Nyquist it is a classic fingerprint of a lossy encode. No line means the spectrum fades smoothly.",
             color = SpectraColors.InkSoft,
             fontSize = 12.sp,
             lineHeight = 16.sp
