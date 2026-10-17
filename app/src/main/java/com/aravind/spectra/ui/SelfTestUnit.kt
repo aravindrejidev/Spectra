@@ -83,7 +83,7 @@ fun SelfTestUnit(vm: SelfTestViewModel = viewModel()) {
                 Text(
                     "Feeds test signals with known answers through the real analyzer on this phone and checks " +
                         "loudness, true peak, clipping, dynamic range, stereo, bit depth and cutoff detection. " +
-                        "Takes about 20 seconds.",
+                        "Takes about one to two minutes.",
                     color = SpectraColors.Ink,
                     fontSize = 13.sp,
                     lineHeight = 18.sp
