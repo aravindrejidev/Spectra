@@ -52,10 +52,19 @@ fun BatchLauncherUnit(vm: BatchViewModel = viewModel()) {
             lineHeight = 18.sp
         )
         Spacer(Modifier.height(12.dp))
-        HwButton("SCAN FOLDER", Modifier.fillMaxWidth(), height = 50.dp) { folder.launch(null) }
+        if (state.running) {
+            Text(
+                "A scan is already running. Open it below, or stop it there before starting another.",
+                color = SpectraColors.InkSoft,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+            Spacer(Modifier.height(10.dp))
+        }
+        HwButton("SCAN FOLDER", Modifier.fillMaxWidth(), height = 50.dp) { if (!state.running) folder.launch(null) }
         Spacer(Modifier.height(10.dp))
-        HwButton("PICK FILES", Modifier.fillMaxWidth(), height = 50.dp) { files.launch(arrayOf("audio/*")) }
-        if (state.items.isNotEmpty() && !state.visible) {
+        HwButton("PICK FILES", Modifier.fillMaxWidth(), height = 50.dp) { if (!state.running) files.launch(arrayOf("audio/*")) }
+        if ((state.items.isNotEmpty() || state.running) && !state.visible) {
             Spacer(Modifier.height(10.dp))
             HwButton("OPEN LAST SCAN (${state.items.size})", Modifier.fillMaxWidth(), height = 44.dp, onClick = vm::show)
         }
