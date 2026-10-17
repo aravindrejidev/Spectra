@@ -159,6 +159,7 @@ class StreamAnalyzer(
     private val subAcc = DoubleArray(numCh)
     private var subFill = 0
     private val subs = DoubleList()
+    private val chWeight = bs1770Weights(numCh)
     private val drSumSq = DoubleArray(numCh)
     private val drPeak = DoubleArray(numCh)
     private var drSubs = 0
@@ -286,7 +287,7 @@ class StreamAnalyzer(
     private fun flushSub() {
         var total = 0.0
         for (c in 0 until numCh) {
-            total += subAcc[c] / subLen
+            total += chWeight[c] * subAcc[c] / subLen
             subAcc[c] = 0.0
         }
         subs.add(total)
