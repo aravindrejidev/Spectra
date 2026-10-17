@@ -27,6 +27,13 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
     private var job: Job? = null
 
     init {
+        // remove downloaded APKs of versions that are already installed
+        runCatching {
+            File(app.cacheDir, "updates").listFiles()?.forEach { f ->
+                val v = f.name.removePrefix("Spectra-v").removeSuffix(".apk")
+                if (!UpdateChecker.isNewer(v, currentVersion)) f.delete()
+            }
+        }
         checkForUpdate()
     }
 
