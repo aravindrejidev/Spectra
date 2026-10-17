@@ -1,1 +1,2 @@
 - Bug fix
+- Loudness of 5.1 / 7.1 files now follows BS.1770 (LFE excluded, surround channels weighted)
