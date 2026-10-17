@@ -152,6 +152,13 @@ object SelfTest {
                 ok
             )
         },
+        Case("Loudness: 5.1 with a loud LFE ignored") {
+            val sr = 48000
+            val x = sine(sr, 20.0, 997.0, amp(-23.0))
+            val silent = FloatArray(x.size)
+            val lfe = sine(sr, 20.0, 50.0, amp(-10.0))
+            near(-23.0, 0.1, analyze(sr, arrayOf(x, x, silent, lfe, silent, silent)).lufs, "LUFS")
+        },
         Case("Verdict: 320 kbps MP3 cut at 16 kHz") {
             val sr = 44100
             val y = lowpassNoise(sr, 6.0, 16000.0, 7L)
