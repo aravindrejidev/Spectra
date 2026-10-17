@@ -119,6 +119,7 @@ class BatchViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun start(label: String, discover: () -> List<Pair<Uri, String>>) {
+        if (_state.value.running) return
         job?.cancel()
         val app = getApplication<Application>()
         job = viewModelScope.launch {
