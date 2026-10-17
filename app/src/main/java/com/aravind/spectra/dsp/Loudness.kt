@@ -20,6 +20,20 @@ internal class Biquad(
     }
 }
 
+/** BS.1770 channel weights for common layouts in FFmpeg channel order: surrounds +1.5 dB, LFE excluded. */
+internal fun bs1770Weights(n: Int): DoubleArray {
+    val sur = 1.4125375446227544
+    return when (n) {
+        3 -> doubleArrayOf(1.0, 1.0, 1.0)
+        4 -> doubleArrayOf(1.0, 1.0, sur, sur)
+        5 -> doubleArrayOf(1.0, 1.0, 1.0, sur, sur)
+        6 -> doubleArrayOf(1.0, 1.0, 1.0, 0.0, sur, sur)
+        7 -> doubleArrayOf(1.0, 1.0, 1.0, 0.0, sur, sur, sur)
+        8 -> doubleArrayOf(1.0, 1.0, 1.0, 0.0, sur, sur, sur, sur)
+        else -> DoubleArray(n) { 1.0 }
+    }
+}
+
 /** ITU-R BS.1770 K-weighting (high-shelf + RLB high-pass), valid for any sample rate. */
 internal fun makeKWeighting(fs: Double): Array<Biquad> {
     var f0 = 1681.974450955533
