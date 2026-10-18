@@ -129,7 +129,7 @@ fun VerdictUnit(v: Verdict) {
                     Led(tone, true, 22.dp)
                     Spacer(Modifier.width(14.dp))
                     Lcd(
-                        v.headline.uppercase(),
+                        rememberTyped(v.headline.uppercase()),
                         Modifier.weight(1f),
                         color = tone,
                         size = 18.sp,
