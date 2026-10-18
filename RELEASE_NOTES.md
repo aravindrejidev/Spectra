@@ -1,2 +1,1 @@
-- Bug fix
-- Loudness of 5.1 / 7.1 files now follows BS.1770 (LFE excluded, surround channels weighted)
+- Smoother look: panels slide in, spectrogram and graphs scan in, springy buttons, pulsing lamps, a metal shine on the header and a typed verdict
