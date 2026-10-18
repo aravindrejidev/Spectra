@@ -1,0 +1,153 @@
+name: Release APK
+
+# Manual release:
+#   Actions > "Release APK" > Run workflow > type the new version number (for example 1.2.0).
+# The release message is read from release-message.md in the repository root.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New version number, for example 1.2.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-apk
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check the version number
+        id: ver
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -e
+          VERSION="${INPUT_VERSION#v}"
+          VERSION="${VERSION#V}"
+          if echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+$'; then
+            VERSION="$VERSION.0"
+          fi
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::The version must look like 1.2.0"
+            exit 1
+          fi
+          IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+          CODE=$(( 10#$MAJOR * 10000 + 10#$MINOR * 100 + 10#$PATCH ))
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "Building version $VERSION (version code $CODE)"
+
+      - name: Make sure this release does not exist yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "::error::Release v$VERSION already exists. Use a higher version number."
+            exit 1
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Accept Android SDK licenses
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Prepare the signing key
+        id: key
+        env:
+          SIGNING_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
+        run: |
+          set -e
+          if [ -z "$SIGNING_PASSPHRASE" ]; then
+            echo "::error::Create the repository secret SIGNING_PASSPHRASE first (Settings > Secrets and variables > Actions > New repository secret)."
+            exit 1
+          fi
+          KEYSTORE="$RUNNER_TEMP/release.p12"
+          if [ -f keystore/release.p12.enc ]; then
+            if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in keystore/release.p12.enc -out "$KEYSTORE" -pass env:SIGNING_PASSPHRASE; then
+              echo "::error::Could not decrypt keystore/release.p12.enc. SIGNING_PASSPHRASE must be the same text that was used in the first release."
+              exit 1
+            fi
+            echo "created=false" >> "$GITHUB_OUTPUT"
+          else
+            keytool -genkeypair -keystore "$KEYSTORE" -storetype PKCS12 -alias tageditor \
+              -keyalg RSA -keysize 4096 -validity 36500 \
+              -storepass "$SIGNING_PASSPHRASE" -keypass "$SIGNING_PASSPHRASE" \
+              -dname "CN=Tag Editor, OU=Android, O=Tag Editor, C=IN"
+            mkdir -p keystore
+            openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in "$KEYSTORE" -out keystore/release.p12.enc -pass env:SIGNING_PASSPHRASE
+            echo "created=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "Signing certificate fingerprint:"
+          keytool -list -v -keystore "$KEYSTORE" -storepass "$SIGNING_PASSPHRASE" -alias tageditor | grep -E "SHA256:" || true
+
+      - name: Keep the encrypted signing key in the repository (first release only)
+        if: steps.key.outputs.created == 'true'
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add keystore/release.p12.enc
+          git commit -m "Add encrypted release signing key"
+          git push
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build the signed release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.SIGNING_PASSPHRASE }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_PASSPHRASE }}
+          KEY_ALIAS: tageditor
+          VERSION: ${{ steps.ver.outputs.version }}
+          CODE: ${{ steps.ver.outputs.code }}
+          REPO: ${{ github.repository }}
+        run: |
+          gradle :app:assembleRelease --stacktrace \
+            -PappVersionName="$VERSION" \
+            -PappVersionCode="$CODE" \
+            -PgithubRepo="$REPO"
+
+      - name: Prepare the release files
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -e
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/TagEditor-$VERSION.apk"
+          if [ -s release-message.md ]; then
+            cp release-message.md "$RUNNER_TEMP/release-notes.md"
+          else
+            echo "Tag Editor $VERSION" > "$RUNNER_TEMP/release-notes.md"
+          fi
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          gh release create "v$VERSION" "$RUNNER_TEMP/TagEditor-$VERSION.apk" \
+            --title "Tag Editor $VERSION" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
