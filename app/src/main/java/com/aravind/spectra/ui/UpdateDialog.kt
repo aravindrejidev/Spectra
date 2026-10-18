@@ -42,7 +42,7 @@ fun UpdatePrompt(vm: UpdateViewModel = viewModel()) {
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
-            RackPanel("Update available", lamp = SpectraColors.Amber) {
+            RackPanel("Update available", lamp = SpectraColors.Amber, lampPulse = s is UpdateState.Downloading) {
                 when (s) {
                     is UpdateState.Available -> {
                         VersionPlate(vm.currentVersion, s.info.version)
