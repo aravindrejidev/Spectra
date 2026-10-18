@@ -2,6 +2,7 @@ package com.aravind.spectra.ui
 
 import android.graphics.Typeface
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -48,6 +49,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -170,13 +172,28 @@ fun RackPanel(
     modifier: Modifier = Modifier,
     lamp: Color? = null,
     lampOn: Boolean = true,
+    lampPulse: Boolean = false,
+    shine: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val shape = RoundedCornerShape(16.dp)
+    val order = remember { Stagger.next() }
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val enter by animateFloatAsState(
+        if (shown) 1f else 0f,
+        tween(520, delayMillis = (order * 70).coerceAtMost(560), easing = FastOutSlowInEasing),
+        label = "panelEnter"
+    )
+    val sweep by rememberShine(shine)
     Box(
         modifier
             .fillMaxWidth()
             .padding(top = 16.dp)
+            .graphicsLayer {
+                alpha = enter
+                translationY = (1f - enter) * 48.dp.toPx()
+            }
             .shadow(12.dp, shape)
             .clip(shape)
             .background(
@@ -208,7 +225,9 @@ fun RackPanel(
         Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Engraved(title.uppercase(), Modifier.weight(1f), size = 12.sp, spacing = 2.sp)
-                if (lamp != null) Led(lamp, lampOn, 10.dp)
+                if (lamp != null) {
+                    if (lampPulse) PulsingLed(lamp, 10.dp) else Led(lamp, lampOn, 10.dp)
+                }
             }
             Spacer(Modifier.height(12.dp))
             content()
@@ -216,6 +235,17 @@ fun RackPanel(
         Canvas(Modifier.matchParentSize()) {
             val inset = 11.dp.toPx()
             val r = 4.5.dp.toPx()
+            if (shine && sweep >= 0f) {
+                val cx = size.width * (sweep * 1.5f - 0.25f)
+                val half = 70.dp.toPx()
+                drawRect(
+                    Brush.linearGradient(
+                        listOf(Color.Transparent, Color.White.copy(alpha = 0.38f), Color.Transparent),
+                        start = Offset(cx - half, 0f),
+                        end = Offset(cx + half, size.height * 0.5f)
+                    )
+                )
+            }
             drawScrew(Offset(inset, inset), r, 35f)
             drawScrew(Offset(size.width - inset, inset), r, 110f)
             drawScrew(Offset(inset, size.height - inset), r, 75f)
@@ -318,6 +348,12 @@ fun HwButton(
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val down = pressed || active
+    val pressScale by animateFloatAsState(
+        if (pressed) 0.96f else 1f,
+        spring(dampingRatio = 0.55f, stiffness = 500f),
+        label = "press"
+    )
+    val elev by animateDpAsState(if (down) 1.dp else 7.dp, tween(120), label = "elev")
     val haptic = LocalHapticFeedback.current
     val shape = RoundedCornerShape(11.dp)
     val face = if (down) listOf(Color(0xFFA7ACB5), Color(0xFFC9CDD4))
@@ -328,7 +364,11 @@ fun HwButton(
     Box(
         modifier
             .height(height)
-            .shadow(if (down) 1.dp else 7.dp, shape)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
+            .shadow(elev, shape)
             .clip(shape)
             .background(Brush.verticalGradient(face))
             .border(1.dp, Brush.verticalGradient(rim), shape)
