@@ -77,7 +77,7 @@ fun SelfTestUnit(vm: SelfTestViewModel = viewModel()) {
         is SelfTestState.Done -> if (s.results.all { it.pass }) SpectraColors.Green else SpectraColors.Red
     }
 
-    RackPanel("Self-test", lamp = lamp) {
+    RackPanel("Self-test", lamp = lamp, lampPulse = s is SelfTestState.Running) {
         when (s) {
             is SelfTestState.Idle -> {
                 Text(
