@@ -1,17 +1,18 @@
 package com.aravind.spectra.ui
 
-import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,9 +46,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aravind.spectra.model.UiState
 import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.update.UpdateChecker
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
+
+/** What is on screen: the batch list, or one of the single-track states. */
+private data class ScreenState(val batch: Boolean, val ui: UiState)
 
 @Composable
 fun AnalyzerScreen(
@@ -88,29 +93,40 @@ fun AnalyzerScreen(
         ) {
             Spacer(Modifier.height(4.dp))
             HeaderUnit(state)
-            if (batch.visible) {
-                BatchScreen(batchVm) { uri ->
-                    batchVm.hide()
-                    viewModel.analyzeFile(context, uri)
-                }
-            } else when (val s = state) {
-                is UiState.Idle -> IdleUnits { picker.launch(arrayOf("audio/*")) }
-                is UiState.Loading -> LoadingUnit(s) { viewModel.cancel() }
-                is UiState.Error -> ErrorUnit(s.message) { viewModel.reset() }
-                is UiState.Success -> {
-                    SourceUnit(s, onNew = { viewModel.reset() }, onShare = { showShare = true })
-                    if (showShare) ShareDialog(s, view, logScale, minDb) { showShare = false }
-                    VerdictUnit(s.verdict)
-                    SpectrogramUnit(
-                        s.analysis, view, viewModel::setView,
-                        logScale, viewModel::setLogScale,
-                        minDb, viewModel::setMinDb
-                    )
-                    SpectrumUnit(s.analysis)
-                    TimelineUnit(s.analysis)
-                    LevelsUnit(s.analysis)
-                    FileFactsUnit(s)
-                    DetailsUnit(s)
+
+            AnimatedContent(
+                targetState = ScreenState(batch.visible, state),
+                // progress updates inside one screen must not trigger a transition
+                contentKey = { if (it.batch) "batch" else it.ui::class.java.name },
+                transitionSpec = { fadeIn(tween(320, delayMillis = 90)) togetherWith fadeOut(tween(140)) },
+                label = "screen"
+            ) { screen ->
+                Column(Modifier.fillMaxWidth()) {
+                    if (screen.batch) {
+                        BatchScreen(batchVm) { uri ->
+                            batchVm.hide()
+                            viewModel.analyzeFile(context, uri)
+                        }
+                    } else when (val s = screen.ui) {
+                        is UiState.Idle -> IdleUnits { picker.launch(arrayOf("audio/*")) }
+                        is UiState.Loading -> LoadingUnit(s) { viewModel.cancel() }
+                        is UiState.Error -> ErrorUnit(s.message) { viewModel.reset() }
+                        is UiState.Success -> {
+                            SourceUnit(s, onNew = { viewModel.reset() }, onShare = { showShare = true })
+                            if (showShare) ShareDialog(s, view, logScale, minDb) { showShare = false }
+                            VerdictUnit(s.verdict)
+                            SpectrogramUnit(
+                                s.analysis, view, viewModel::setView,
+                                logScale, viewModel::setLogScale,
+                                minDb, viewModel::setMinDb
+                            )
+                            SpectrumUnit(s.analysis)
+                            TimelineUnit(s.analysis)
+                            LevelsUnit(s.analysis)
+                            FileFactsUnit(s)
+                            DetailsUnit(s)
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(40.dp))
@@ -118,26 +134,22 @@ fun AnalyzerScreen(
     }
 }
 
-private fun shareReport(context: Context, text: String) {
-    val i = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, "Spectra report")
-        putExtra(Intent.EXTRA_TEXT, text)
-    }
-    context.startActivity(Intent.createChooser(i, "Share report"))
-}
-
 @Composable
 private fun HeaderUnit(state: UiState) {
+    val context = LocalContext.current
+    val version = remember { UpdateChecker.currentVersion(context) }
     val lamp = when (state) {
         is UiState.Idle -> SpectraColors.Amber
         is UiState.Loading -> SpectraColors.Blue
         is UiState.Error -> SpectraColors.Red
         is UiState.Success -> SpectraColors.Green
     }
-    RackPanel("Spectra SA-1", lamp = lamp) {
+    RackPanel("Spectra SA-1", lamp = lamp, lampPulse = state is UiState.Loading, shine = true) {
         Engraved("SPECTRA", size = 34.sp, color = SpectraColors.Ink, spacing = 4.sp, weight = FontWeight.Black)
-        Engraved("AUDIO FORENSICS ANALYZER", size = 10.sp, spacing = 2.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Engraved("AUDIO FORENSICS ANALYZER", Modifier.weight(1f), size = 10.sp, spacing = 2.sp)
+            Engraved("v$version", size = 10.sp, spacing = 1.sp)
+        }
     }
 }
 
@@ -189,6 +201,7 @@ private fun IdleUnits(onLoad: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Engraved("FLAC · WAV · MP3 · AAC · OGG · OPUS", size = 11.sp, spacing = 1.5.sp)
     }
+
     BatchLauncherUnit()
 
     SelfTestUnit()
@@ -196,10 +209,12 @@ private fun IdleUnits(onLoad: () -> Unit) {
     RackPanel("Checks") {
         listOf(
             "Fake-lossless & upsample detection",
-            "Loudness: LUFS, LRA, true peak",
-            "Dynamic range (DR) & clipping",
+            "Inflated-bitrate and encoder-tag evidence",
+            "Loudness: LUFS, LRA, true peak, over time",
+            "Dynamic range (DR) & clipping timeline",
             "Spectrogram with LIN / LOG, MID / SIDE",
             "Stereo field & effective bit depth",
+            "Batch scan, PDF and CSV export",
             "100% on-device analysis (network: update check only)"
         ).forEach {
             Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -213,15 +228,23 @@ private fun IdleUnits(onLoad: () -> Unit) {
 
 @Composable
 private fun LoadingUnit(s: UiState.Loading, onAbort: () -> Unit) {
-    val p = s.progress ?: 0f
-    RackPanel("Analyzing", lamp = SpectraColors.Blue) {
+    val p = s.progress
+    RackPanel("Analyzing", lamp = SpectraColors.Blue, lampPulse = true) {
         GlassScreen {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                Lcd(s.step.uppercase(), size = 14.sp)
+                Lcd(rememberTyped(s.step.uppercase()), size = 14.sp)
                 Spacer(Modifier.height(12.dp))
-                LedLadder((p * 100f).toDouble(), 0.0, 100.0, segments = 30, tint = SpectraColors.Phosphor)
+                if (p == null) {
+                    ScanBar()
+                } else {
+                    LedLadder((p * 100f).toDouble(), 0.0, 100.0, segments = 30, tint = SpectraColors.Phosphor)
+                }
                 Spacer(Modifier.height(8.dp))
-                Lcd("${(p * 100f).roundToInt()} %", color = SpectraColors.PhosphorDim, size = 12.sp)
+                Lcd(
+                    if (p == null) "WORKING…" else "${(p * 100f).roundToInt()} %",
+                    color = SpectraColors.PhosphorDim,
+                    size = 12.sp
+                )
             }
         }
         Spacer(Modifier.height(14.dp))
