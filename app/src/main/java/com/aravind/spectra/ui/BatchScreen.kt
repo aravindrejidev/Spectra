@@ -93,7 +93,7 @@ fun BatchScreen(vm: BatchViewModel, onOpen: (Uri) -> Unit) {
     val overall = if (total > 0) (finished + (s.fileProgress ?: 0f)) / total else 0f
     fun countOf(sev: Severity) = s.items.count { it.row?.severity == sev }
 
-    RackPanel("Batch scan", lamp = if (s.running) SpectraColors.Blue else SpectraColors.Green) {
+    RackPanel("Batch scan", lamp = if (s.running) SpectraColors.Blue else SpectraColors.Green, lampPulse = s.running) {
         GlassScreen {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
                 Lcd(s.label, size = 13.sp, maxLines = 2)
