@@ -133,6 +133,7 @@ fun SpectrogramPane(
                     .weight(1f)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(4.dp))
+                    .revealWipe(key = spec)
                     .pointerInput(spec) {
                         detectTapGestures { o ->
                             cursor = Offset(
@@ -221,7 +222,7 @@ fun SpectrogramPane(
 @Composable
 fun AvgSpectrumPlot(avgDb: FloatArray, nyquist: Double, cutoffHz: Double, sharp: Boolean) {
     val paint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
-    Canvas(Modifier.fillMaxWidth().height(170.dp).padding(horizontal = 4.dp)) {
+    Canvas(Modifier.fillMaxWidth().height(170.dp).padding(horizontal = 4.dp).revealWipe()) {
         val left = 34.dp.toPx()
         val bottom = 18.dp.toPx()
         val top = 8.dp.toPx()
