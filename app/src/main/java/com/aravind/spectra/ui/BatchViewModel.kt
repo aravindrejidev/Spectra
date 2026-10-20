@@ -15,6 +15,7 @@ import androidx.lifecycle.viewModelScope
 import com.aravind.spectra.dsp.Severity
 import com.aravind.spectra.dsp.VerdictEngine
 import com.aravind.spectra.model.UiState
+import com.aravind.spectra.engage.Trophies
 import com.aravind.spectra.notify.Notifier
 import com.aravind.spectra.notify.ProgressHub
 import kotlinx.coroutines.CancellationException
@@ -149,6 +150,7 @@ class BatchViewModel(app: Application) : AndroidViewModel(app) {
                             ProgressHub.update(app, ProgressHub.Kind.BATCH, hubId, "${i + 1} / $total · $stage", (i + (p ?: 0f)) / total)
                         }
                         items[i] = items[i].copy(status = BatchStatus.DONE, row = rowOf(s))
+                        Trophies.recordAnalysis(app, s)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: OutOfMemoryError) {
@@ -163,6 +165,7 @@ class BatchViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 val failed = items.count { it.status == BatchStatus.FAILED }
                 Notifier.scanDone(app, "$total files scanned · $suspicious suspicious · $failed failed")
+                Trophies.recordBatchDone(app, total)
             } finally {
                 ProgressHub.end(app, ProgressHub.Kind.BATCH, hubId)
                 val now = _state.value
