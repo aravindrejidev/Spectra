@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.aravind.spectra.engage.Trophies
 import com.aravind.spectra.model.UiState
 import com.aravind.spectra.ui.theme.SpectraColors
 import kotlinx.coroutines.CancellationException
@@ -75,6 +76,7 @@ fun ShareDialog(
                                 val bmp = ReportImage.render(context, s, view, logScale, minDb)
                                 val where = ReportImage.saveToGallery(context, bmp, s.tags.title ?: s.fileName)
                                 Toast.makeText(context, "Report image saved to $where", Toast.LENGTH_LONG).show()
+                                Trophies.recordImage(context)
                             } catch (e: CancellationException) {
                                 throw e
                             } catch (e: Exception) {
@@ -93,6 +95,7 @@ fun ShareDialog(
                             try {
                                 val where = PdfExport.saveReportPdf(context, s, view, logScale, minDb)
                                 Toast.makeText(context, "PDF saved to $where", Toast.LENGTH_LONG).show()
+                                Trophies.recordPdf(context)
                             } catch (e: CancellationException) {
                                 throw e
                             } catch (e: Exception) {
