@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import com.aravind.spectra.engage.Trophies
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +77,10 @@ fun SelfTestUnit(vm: SelfTestViewModel = viewModel()) {
         is SelfTestState.Idle -> SpectraColors.Amber
         is SelfTestState.Running -> SpectraColors.Blue
         is SelfTestState.Done -> if (s.results.all { it.pass }) SpectraColors.Green else SpectraColors.Red
+    }
+
+    LaunchedEffect(s) {
+        if (s is SelfTestState.Done) Trophies.recordSelfTest(context, s.results.all { it.pass })
     }
 
     RackPanel("Self-test", lamp = lamp, lampPulse = s is SelfTestState.Running) {
