@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aravind.spectra.model.UiState
@@ -83,6 +84,9 @@ fun AnalyzerScreen(
     NotificationPermissionRequest()
 
     SkeuoBackground {
+        TrophyToastHost(
+            Modifier.align(Alignment.TopCenter).zIndex(10f).statusBarsPadding().padding(horizontal = 14.dp)
+        )
         Column(
             Modifier
                 .fillMaxSize()
@@ -204,6 +208,12 @@ private fun IdleUnits(onLoad: () -> Unit) {
 
     BatchLauncherUnit()
 
+    TrophyShelfUnit()
+
+    SpotGameUnit()
+
+    TipsUnit()
+
     SelfTestUnit()
 
     RackPanel("Checks") {
@@ -247,6 +257,8 @@ private fun LoadingUnit(s: UiState.Loading, onAbort: () -> Unit) {
                 )
             }
         }
+        Spacer(Modifier.height(14.dp))
+        TipLine()
         Spacer(Modifier.height(14.dp))
         HwButton("ABORT", Modifier.fillMaxWidth(), onClick = onAbort)
     }
