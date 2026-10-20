@@ -1,1 +1,3 @@
-- Smoother look: panels slide in, spectrogram and graphs scan in, springy buttons, pulsing lamps, a metal shine on the header and a typed verdict
+- Trophies: 17 medals and your lifetime numbers, with a plaque when you unlock one
+- "Spot the fake" mini-game: ten spectrograms, brick wall or natural fade?
+- "Did you know?" audio facts on the home screen and while an analysis runs
