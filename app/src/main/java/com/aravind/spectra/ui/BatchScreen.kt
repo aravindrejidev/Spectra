@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aravind.spectra.dsp.Severity
+import com.aravind.spectra.engage.Trophies
 import com.aravind.spectra.ui.theme.SpectraColors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -154,6 +155,7 @@ fun BatchScreen(vm: BatchViewModel, onOpen: (Uri) -> Unit) {
                         try {
                             val where = PdfExport.saveBatchPdf(context, s.label, s.items)
                             Toast.makeText(context, "PDF saved to $where", Toast.LENGTH_LONG).show()
+                            Trophies.recordPdf(context)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
