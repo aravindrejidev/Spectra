@@ -11,6 +11,7 @@ import com.aravind.spectra.dsp.StreamAnalyzer
 import com.aravind.spectra.dsp.VerdictEngine
 import com.aravind.spectra.metadata.MetadataReader
 import com.aravind.spectra.model.UiState
+import com.aravind.spectra.engage.Trophies
 import com.aravind.spectra.notify.Notifier
 import com.aravind.spectra.notify.ProgressHub
 import kotlinx.coroutines.CancellationException
@@ -100,6 +101,7 @@ class AnalyzerViewModel : ViewModel() {
                 )
                 val lufs = result.second.lufs?.let { " · ${f1(it)} LUFS" } ?: ""
                 Notifier.analysisDone(app, tags.title ?: name, result.third.headline + lufs)
+                (_state.value as? UiState.Success)?.let { Trophies.recordAnalysis(app, it) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: OutOfMemoryError) {
