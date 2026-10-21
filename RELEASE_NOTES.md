@@ -1,3 +1,2 @@
-- Trophies: 17 medals and your lifetime numbers, with a plaque when you unlock one
-- "Spot the fake" mini-game: ten spectrograms, brick wall or natural fade?
-- "Did you know?" audio facts on the home screen and while an analysis runs
+## What's New
+- Redesigned update popup: animated states, live download speed and time left, and a what's-new popup after you update
