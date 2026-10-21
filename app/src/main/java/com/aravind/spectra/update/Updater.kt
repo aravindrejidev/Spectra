@@ -27,6 +27,7 @@ sealed class UpdateState {
     data class Downloading(val info: UpdateInfo, val progress: Float) : UpdateState()
     data class Ready(val info: UpdateInfo, val file: File, val needsPermission: Boolean) : UpdateState()
     data class Failed(val info: UpdateInfo, val message: String) : UpdateState()
+    data class Welcome(val info: UpdateInfo) : UpdateState()
 }
 
 object UpdateChecker {
