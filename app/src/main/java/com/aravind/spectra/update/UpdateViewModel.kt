@@ -26,7 +26,13 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
 
     private var job: Job? = null
 
+    private var justUpdated = false
+
     init {
+        // the first launch after an update shows "what's new"; the very first install only records the version
+        val lastSeen = prefs.getString("welcomed_version", null)
+        justUpdated = lastSeen != null && lastSeen != currentVersion
+        prefs.edit().putString("welcomed_version", currentVersion).apply()
         // remove downloaded APKs of versions that are already installed
         runCatching {
             File(app.cacheDir, "updates").listFiles()?.forEach { f ->
@@ -51,6 +57,11 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
                 prefs.getString("skipped_version", null) != info.version
             ) {
                 _state.value = UpdateState.Available(info)
+            } else if (justUpdated && info != null &&
+                !UpdateChecker.isNewer(info.version, currentVersion) &&
+                !UpdateChecker.isNewer(currentVersion, info.version)
+            ) {
+                _state.value = UpdateState.Welcome(info)
             }
         }
     }
@@ -60,6 +71,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
         is UpdateState.Downloading -> s.info
         is UpdateState.Ready -> s.info
         is UpdateState.Failed -> s.info
+        is UpdateState.Welcome -> s.info
         is UpdateState.Hidden -> null
     }
 
