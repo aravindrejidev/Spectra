@@ -8,6 +8,7 @@ import android.media.MediaFormat
 import android.net.Uri
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import com.aravind.spectra.settings.AppSettings
 import java.util.concurrent.CancellationException
 
 /**
@@ -37,7 +38,7 @@ object AudioDecoder {
 
     fun decode(context: Context, uri: Uri, listener: Listener, checkCancelled: () -> Unit): DecodeInfo {
         try {
-            val r = FfmpegDecoder.decode(context, uri, listener, checkCancelled)
+            val r = if (AppSettings.decoderMode == 2) null else FfmpegDecoder.decode(context, uri, listener, checkCancelled)
             if (r != null) return r
         } catch (e: CancellationException) {
             throw e
@@ -46,7 +47,11 @@ object AudioDecoder {
         } catch (e: LinkageError) {
             // native FFmpeg library unavailable: fall back
         }
-        return decodeWithMediaCodec(context, uri, listener, checkCancelled).copy(note = FfmpegDecoder.lastFailure)
+        if (AppSettings.decoderMode == 1) {
+            error("FFmpeg could not decode this file (${FfmpegDecoder.lastFailure ?: "unknown reason"}). The decoder is set to FFmpeg only in Settings.")
+        }
+        val note = if (AppSettings.decoderMode == 2) "decoder is set to System only in Settings" else FfmpegDecoder.lastFailure
+        return decodeWithMediaCodec(context, uri, listener, checkCancelled).copy(note = note)
     }
 
     private fun decodeWithMediaCodec(
