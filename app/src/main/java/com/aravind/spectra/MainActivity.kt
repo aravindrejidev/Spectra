@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.mutableStateOf
 import com.aravind.spectra.notify.AppState
+import com.aravind.spectra.settings.AppSettings
 import com.aravind.spectra.ui.AnalyzerScreen
 import com.aravind.spectra.ui.theme.SpectraTheme
 import com.aravind.spectra.update.UpdateWorker
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
         )
         if (savedInstanceState == null) incoming.value = extractUri(intent)
+        AppSettings.load(applicationContext)
         UpdateWorker.schedule(applicationContext)
         setContent {
             SpectraTheme {
