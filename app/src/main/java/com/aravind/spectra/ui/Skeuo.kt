@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aravind.spectra.settings.AppSettings
 import com.aravind.spectra.ui.theme.SpectraColors
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -181,11 +182,11 @@ fun RackPanel(
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     val enter by animateFloatAsState(
-        if (shown) 1f else 0f,
+        if (shown || AppSettings.reduceMotion) 1f else 0f,
         tween(520, delayMillis = (order * 70).coerceAtMost(560), easing = FastOutSlowInEasing),
         label = "panelEnter"
     )
-    val sweep by rememberShine(shine)
+    val sweep by rememberShine(shine && AppSettings.headerShine && !AppSettings.reduceMotion)
     Box(
         modifier
             .fillMaxWidth()
@@ -226,7 +227,7 @@ fun RackPanel(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Engraved(title.uppercase(), Modifier.weight(1f), size = 12.sp, spacing = 2.sp)
                 if (lamp != null) {
-                    if (lampPulse) PulsingLed(lamp, 10.dp) else Led(lamp, lampOn, 10.dp)
+                    if (lampPulse && !AppSettings.reduceMotion) PulsingLed(lamp, 10.dp) else Led(lamp, lampOn, 10.dp)
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -373,7 +374,7 @@ fun HwButton(
             .background(Brush.verticalGradient(face))
             .border(1.dp, Brush.verticalGradient(rim), shape)
             .clickable(interactionSource = src, indication = null) {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                if (AppSettings.haptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
             .padding(horizontal = if (compact) 2.dp else 14.dp),
