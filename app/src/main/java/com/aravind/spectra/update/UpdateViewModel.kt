@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aravind.spectra.notify.AppState
+import com.aravind.spectra.settings.AppSettings
 import com.aravind.spectra.notify.Notifier
 import com.aravind.spectra.notify.ProgressHub
 import kotlinx.coroutines.CancellationException
@@ -44,6 +45,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun checkForUpdate() {
+        if (!AppSettings.checkOnLaunch) return
         viewModelScope.launch {
             val info = try {
                 UpdateChecker.fetchLatest()
@@ -73,6 +75,31 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
         is UpdateState.Failed -> s.info
         is UpdateState.Welcome -> s.info
         is UpdateState.Hidden -> null
+    }
+
+    /** Manual check from Settings: always offers a newer version, even one you chose not to be reminded about. */
+    fun checkNow(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val info = try {
+                UpdateChecker.fetchLatest()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            when {
+                info == null -> onResult("Could not reach GitHub. Check your connection.")
+                UpdateChecker.isNewer(info.version, currentVersion) -> {
+                    _state.value = UpdateState.Available(info)
+                    onResult("Version ${info.version} is available")
+                }
+                else -> onResult("You have the latest version (v$currentVersion)")
+            }
+        }
+    }
+
+    fun forgetSkippedVersion() {
+        prefs.edit().remove("skipped_version").remove("notified_version").apply()
     }
 
     fun later() {
