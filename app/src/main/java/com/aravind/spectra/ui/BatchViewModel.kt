@@ -16,6 +16,7 @@ import com.aravind.spectra.dsp.Severity
 import com.aravind.spectra.dsp.VerdictEngine
 import com.aravind.spectra.model.UiState
 import com.aravind.spectra.engage.Trophies
+import com.aravind.spectra.settings.AppSettings
 import com.aravind.spectra.notify.Notifier
 import com.aravind.spectra.notify.ProgressHub
 import kotlinx.coroutines.CancellationException
@@ -247,7 +248,7 @@ object FolderScanner {
         val out = ArrayList<Pair<Uri, String>>()
 
         fun walk(docId: String, prefix: String, depth: Int) {
-            if (depth > 10 || out.size >= MAX_FILES) return
+            if (depth > (if (AppSettings.scanSubfolders) 10 else 0) || out.size >= MAX_FILES) return
             val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId)
             val cols = arrayOf(
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,
