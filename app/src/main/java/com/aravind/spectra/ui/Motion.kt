@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.aravind.spectra.settings.AppSettings
 import com.aravind.spectra.ui.theme.SpectraColors
 import kotlin.math.abs
 import kotlinx.coroutines.delay
@@ -53,6 +54,7 @@ object Stagger {
 /** The text revealed one character at a time, like an LCD booting. */
 @Composable
 fun rememberTyped(text: String, msPerChar: Long = 26L): String {
+    if (!AppSettings.typewriter || AppSettings.reduceMotion) return text
     var n by remember(text) { mutableIntStateOf(0) }
     LaunchedEffect(text) {
         n = 0
@@ -67,6 +69,7 @@ fun rememberTyped(text: String, msPerChar: Long = 26L): String {
 /** Reveals the content left to right behind a glowing scan line. Restarts when [key] changes. */
 @Composable
 fun Modifier.revealWipe(durationMs: Int = 900, key: Any? = null): Modifier {
+    if (AppSettings.reduceMotion) return this
     val progress = remember(key) { Animatable(0f) }
     LaunchedEffect(key) {
         progress.animateTo(1f, tween(durationMs, easing = FastOutSlowInEasing))
