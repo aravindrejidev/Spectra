@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.aravind.spectra.notify.AppState
+import com.aravind.spectra.settings.AppSettings
 import com.aravind.spectra.notify.Notifier
 import java.util.concurrent.TimeUnit
 
@@ -16,6 +17,8 @@ import java.util.concurrent.TimeUnit
 class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        AppSettings.ensureLoaded(applicationContext)
+        if (!AppSettings.dailyCheck) return Result.success()
         if (AppState.foreground) return Result.success() // the app's own popup covers this
 
         val app = applicationContext
