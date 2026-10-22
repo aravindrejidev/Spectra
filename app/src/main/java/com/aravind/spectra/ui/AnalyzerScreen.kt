@@ -32,6 +32,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,18 +43,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aravind.spectra.model.UiState
+import com.aravind.spectra.settings.AppSettings
 import com.aravind.spectra.ui.theme.SpectraColors
 import com.aravind.spectra.update.UpdateChecker
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-/** What is on screen: the batch list, or one of the single-track states. */
-private data class ScreenState(val batch: Boolean, val ui: UiState)
+/** What is on screen: Settings, the batch list, or one of the single-track states. */
+private data class ScreenState(val settings: Boolean, val batch: Boolean, val ui: UiState)
 
 @Composable
 fun AnalyzerScreen(
@@ -69,6 +71,7 @@ fun AnalyzerScreen(
     val batchVm: BatchViewModel = viewModel()
     val batch by batchVm.state.collectAsState()
     var showShare by remember { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) viewModel.analyzeFile(context, uri)
@@ -95,18 +98,25 @@ fun AnalyzerScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = 14.dp)
         ) {
-            Spacer(Modifier.height(4.dp))
-            HeaderUnit(state)
+            if (!showSettings) {
+                Spacer(Modifier.height(4.dp))
+                HeaderUnit(state) { showSettings = true }
+            }
 
             AnimatedContent(
-                targetState = ScreenState(batch.visible, state),
+                targetState = ScreenState(showSettings, batch.visible, state),
                 // progress updates inside one screen must not trigger a transition
-                contentKey = { if (it.batch) "batch" else it.ui::class.java.name },
+                contentKey = { if (it.settings) "settings" else if (it.batch) "batch" else it.ui::class.java.name },
                 transitionSpec = { fadeIn(tween(320, delayMillis = 90)) togetherWith fadeOut(tween(140)) },
                 label = "screen"
             ) { screen ->
                 Column(Modifier.fillMaxWidth()) {
-                    if (screen.batch) {
+                    if (screen.settings) {
+                        SettingsScreen(onClose = {
+                            showSettings = false
+                            viewModel.applyDefaults()
+                        })
+                    } else if (screen.batch) {
                         BatchScreen(batchVm) { uri ->
                             batchVm.hide()
                             viewModel.analyzeFile(context, uri)
@@ -139,7 +149,7 @@ fun AnalyzerScreen(
 }
 
 @Composable
-private fun HeaderUnit(state: UiState) {
+private fun HeaderUnit(state: UiState, onSettings: () -> Unit) {
     val context = LocalContext.current
     val version = remember { UpdateChecker.currentVersion(context) }
     val lamp = when (state) {
@@ -149,7 +159,13 @@ private fun HeaderUnit(state: UiState) {
         is UiState.Success -> SpectraColors.Green
     }
     RackPanel("Spectra SA-1", lamp = lamp, lampPulse = state is UiState.Loading, shine = true) {
-        Engraved("SPECTRA", size = 34.sp, color = SpectraColors.Ink, spacing = 4.sp, weight = FontWeight.Black)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Engraved(
+                "SPECTRA", Modifier.weight(1f),
+                size = 34.sp, color = SpectraColors.Ink, spacing = 4.sp, weight = FontWeight.Black
+            )
+            GearButton(onSettings)
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Engraved("AUDIO FORENSICS ANALYZER", Modifier.weight(1f), size = 10.sp, spacing = 2.sp)
             Engraved("v$version", size = 10.sp, spacing = 1.sp)
@@ -208,13 +224,10 @@ private fun IdleUnits(onLoad: () -> Unit) {
 
     BatchLauncherUnit()
 
-    TrophyShelfUnit()
-
-    SpotGameUnit()
-
-    TipsUnit()
-
-    SelfTestUnit()
+    if (AppSettings.showTrophies) TrophyShelfUnit()
+    if (AppSettings.showGame) SpotGameUnit()
+    if (AppSettings.showTips) TipsUnit()
+    if (AppSettings.showSelfTest) SelfTestUnit()
 
     RackPanel("Checks") {
         listOf(
