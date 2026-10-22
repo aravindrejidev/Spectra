@@ -82,6 +82,15 @@ object Trophies {
     }
 
     @Synchronized
+    fun reset(context: Context) {
+        ensureLoaded(context)
+        _stats.value = Stats()
+        _unlocked.value = emptySet()
+        _pending.value = emptyList()
+        save()
+    }
+
+    @Synchronized
     fun dismissFirst() {
         _pending.value = _pending.value.drop(1)
     }
