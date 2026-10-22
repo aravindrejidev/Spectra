@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aravind.spectra.settings.AppSettings
 import com.aravind.spectra.ui.theme.SpectraColors
 import kotlinx.coroutines.delay
 
@@ -74,6 +75,7 @@ fun TipsUnit() {
 /** A smaller version shown while an analysis runs, so the wait is not empty. */
 @Composable
 fun TipLine() {
+    if (!AppSettings.showTips) return
     var index by remember { mutableIntStateOf(startIndex()) }
     LaunchedEffect(index) {
         delay(9_000)
