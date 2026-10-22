@@ -1,5 +1,6 @@
 package com.aravind.spectra.dsp
 
+import com.aravind.spectra.settings.AppSettings
 import java.util.Arrays
 import kotlin.math.*
 
@@ -134,7 +135,9 @@ class StreamAnalyzer(
     private val sampleRate: Int,
     private val numCh: Int,
     expectedFrames: Long,
-    private val trackBits: Boolean
+    private val trackBits: Boolean,
+    private val exactTruePeak: Boolean = AppSettings.exactTruePeak,
+    private val clipThreshold: Double = AppSettings.clipThreshold
 ) {
     private val specCh = min(numCh, 2)
 
@@ -230,7 +233,7 @@ class StreamAnalyzer(
             if (subFill >= subLen) flushSub()
             pos += n
         }
-        tpMeter.process(data, frames)
+        if (exactTruePeak) tpMeter.process(data, frames)
         if (numCh >= 2) updateStereo(data[0], data[1], frames)
         feedStft(data, frames)
         totalFrames += frames
@@ -259,7 +262,7 @@ class StreamAnalyzer(
                 if (a > blockPk) blockPk = a
                 sq += s * s
                 dc += s
-                if (a >= 0.999) {
+                if (a >= clipThreshold) {
                     cs++
                     run++
                     if (run == 3) runs++
