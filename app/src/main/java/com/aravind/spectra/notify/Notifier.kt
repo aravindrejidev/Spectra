@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.aravind.spectra.MainActivity
 import com.aravind.spectra.R
+import com.aravind.spectra.settings.AppSettings
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -66,6 +67,9 @@ object Notifier {
     @SuppressLint("MissingPermission")
     fun post(context: Context, id: Int, n: Notification) {
         if (!canNotify(context)) return
+        AppSettings.ensureLoaded(context)
+        if (id == ID_RESULT && !AppSettings.notifyResults) return
+        if (id == ID_UPDATE_AVAILABLE && !AppSettings.notifyUpdates) return
         try {
             NotificationManagerCompat.from(context).notify(id, n)
         } catch (e: SecurityException) {
