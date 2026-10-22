@@ -221,7 +221,7 @@ object SelfTest {
 
     private fun analyze(sr: Int, ch: Array<FloatArray>, trackBits: Boolean = false): AnalysisResult {
         val frames = ch[0].size
-        val an = StreamAnalyzer(sr, ch.size, frames.toLong(), trackBits)
+        val an = StreamAnalyzer(sr, ch.size, frames.toLong(), trackBits, exactTruePeak = true, clipThreshold = 0.999)
         val chunk = 8192
         val buf = Array(ch.size) { FloatArray(chunk) }
         var pos = 0
