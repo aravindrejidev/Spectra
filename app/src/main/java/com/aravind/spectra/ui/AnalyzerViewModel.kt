@@ -12,6 +12,7 @@ import com.aravind.spectra.dsp.VerdictEngine
 import com.aravind.spectra.metadata.MetadataReader
 import com.aravind.spectra.model.UiState
 import com.aravind.spectra.engage.Trophies
+import com.aravind.spectra.settings.AppSettings
 import com.aravind.spectra.notify.Notifier
 import com.aravind.spectra.notify.ProgressHub
 import kotlinx.coroutines.CancellationException
@@ -33,13 +34,19 @@ class AnalyzerViewModel : ViewModel() {
     private val _view = MutableStateFlow("all")
     val view: StateFlow<String> = _view.asStateFlow()
 
-    private val _logScale = MutableStateFlow(false)
+    private val _logScale = MutableStateFlow(AppSettings.defaultLogScale)
     val logScale: StateFlow<Boolean> = _logScale.asStateFlow()
 
-    private val _minDb = MutableStateFlow(-100f)
+    private val _minDb = MutableStateFlow(AppSettings.defaultFloorDb)
     val minDb: StateFlow<Float> = _minDb.asStateFlow()
 
     private var job: Job? = null
+
+    /** Called when Settings closes: the spectrogram defaults may have changed. */
+    fun applyDefaults() {
+        _logScale.value = AppSettings.defaultLogScale
+        _minDb.value = AppSettings.defaultFloorDb
+    }
 
     fun setView(v: String) { _view.value = v }
     fun setLogScale(b: Boolean) { _logScale.value = b }
