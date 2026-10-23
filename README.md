@@ -50,35 +50,35 @@ No accounts. No ads. No telemetry. Your audio never leaves the phone; the networ
 ## 📸 Showcase
 
 <div align="center">
-  <img src="assets/banner.png" alt="Spectra banner" width="100%" />
+  <img src="docs/banner.png" alt="Spectra banner" width="100%" />
   <br/><br/>
   <table>
     <tr>
       <td width="33%" align="center">
-        <img src="assets/screenshots/home.png" alt="Home" width="100%" /><br />
+        <img src="docs/home.png" alt="Home" width="100%" /><br />
         <sub><b>Home</b></sub>
       </td>
       <td width="33%" align="center">
-        <img src="assets/screenshots/verdict.png" alt="Verdict" width="100%" /><br />
+        <img src="docs/result.png" alt="Verdict" width="100%" /><br />
         <sub><b>Verdict & Evidence</b></sub>
       </td>
       <td width="33%" align="center">
-        <img src="assets/screenshots/spectrogram.png" alt="Spectrogram" width="100%" /><br />
+        <img src="docs/spectrogram.png" alt="Spectrogram" width="100%" /><br />
         <sub><b>Spectrogram</b></sub>
       </td>
     </tr>
     <tr>
       <td width="33%" align="center">
-        <img src="assets/screenshots/levels.png" alt="Levels and timeline" width="100%" /><br />
+        <img src="docs/details.png" alt="Levels and timeline" width="100%" /><br />
         <sub><b>Levels & Loudness Timeline</b></sub>
       </td>
       <td width="33%" align="center">
-        <img src="assets/screenshots/batch.png" alt="Batch scan" width="100%" /><br />
-        <sub><b>Batch Scan</b></sub>
+        <img src="docs/analysing.png" alt="Batch scan" width="100%" /><br />
+        <sub><b>analysing</b></sub>
       </td>
       <td width="33%" align="center">
-        <img src="assets/screenshots/settings.png" alt="Settings" width="100%" /><br />
-        <sub><b>Settings</b></sub>
+        <img src="docs/about.png" alt="Settings" width="100%" /><br />
+        <sub><b>about</b></sub>
       </td>
     </tr>
   </table>
