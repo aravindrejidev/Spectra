@@ -1,9 +1,17 @@
-<div align="center">
+<p align="center">
+  <a href="https://github.com/aravindrejidev/Spectra/releases"><img height="26" alt="Release" src="https://img.shields.io/github/v/release/aravindrejidev/Spectra?style=plastic&label=RELEASE&labelColor=4a4f58&color=ff9f1a&logo=github&logoColor=white" /></a>
+  <a href="https://github.com/aravindrejidev/Spectra/stargazers"><img height="26" alt="Stars" src="https://img.shields.io/github/stars/aravindrejidev/Spectra?style=plastic&label=STARS&labelColor=4a4f58&color=ffc400&logo=github&logoColor=white" /></a>
+  <a href="https://github.com/aravindrejidev/Spectra/releases"><img height="26" alt="Downloads" src="https://img.shields.io/github/downloads/aravindrejidev/Spectra/total?style=plastic&label=DOWNLOADS&labelColor=4a4f58&color=2f9bff&logo=github&logoColor=white" /></a>
+  <a href="https://github.com/aravindrejidev/Spectra/blob/main/LICENSE"><img height="26" alt="License" src="https://img.shields.io/github/license/aravindrejidev/Spectra?style=plastic&label=LICENSE&labelColor=4a4f58&color=2ecc71" /></a>
+</p>
 
-<br/>
-
-<img src="docs/logo.png" alt="Spectra app icon" width="200" />
-
+<p align="center">
+  <img height="26" alt="Platform" src="https://img.shields.io/badge/PLATFORM-ANDROID-3ddc84?style=plastic&labelColor=4a4f58&logo=android&logoColor=white" />
+  <img height="26" alt="Kotlin" src="https://img.shields.io/badge/BUILT_WITH-KOTLIN-7f52ff?style=plastic&labelColor=4a4f58&logo=kotlin&logoColor=white" />
+  <img height="26" alt="Jetpack Compose" src="https://img.shields.io/badge/UI-JETPACK_COMPOSE-4285f4?style=plastic&labelColor=4a4f58&logo=jetpackcompose&logoColor=white" />
+  <img height="26" alt="FFmpeg" src="https://img.shields.io/badge/DECODER-FFMPEG-00a86b?style=plastic&labelColor=4a4f58&logo=ffmpeg&logoColor=white" />
+  <img height="26" alt="On-device" src="https://img.shields.io/badge/ANALYSIS-100%25_ON--DEVICE-ff6f91?style=plastic&labelColor=4a4f58" />
+</p>
 # Spectra
 
 ### Audio Forensics Analyzer for Android
