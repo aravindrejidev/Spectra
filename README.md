@@ -2,7 +2,7 @@
 
 <br/>
 
-<img src="assets/logo.png" alt="Spectra app icon" width="200" />
+<img src="docs/logo.png" alt="Spectra app icon" width="200" />
 
 # Spectra
 
