@@ -1,17 +1,9 @@
-<p align="center">
-  <a href="https://github.com/aravindrejidev/Spectra/releases"><img height="26" alt="Release" src="https://img.shields.io/github/v/release/aravindrejidev/Spectra?style=plastic&label=RELEASE&labelColor=4a4f58&color=ff9f1a&logo=github&logoColor=white" /></a>
-  <a href="https://github.com/aravindrejidev/Spectra/stargazers"><img height="26" alt="Stars" src="https://img.shields.io/github/stars/aravindrejidev/Spectra?style=plastic&label=STARS&labelColor=4a4f58&color=ffc400&logo=github&logoColor=white" /></a>
-  <a href="https://github.com/aravindrejidev/Spectra/releases"><img height="26" alt="Downloads" src="https://img.shields.io/github/downloads/aravindrejidev/Spectra/total?style=plastic&label=DOWNLOADS&labelColor=4a4f58&color=2f9bff&logo=github&logoColor=white" /></a>
-  <a href="https://github.com/aravindrejidev/Spectra/blob/main/LICENSE"><img height="26" alt="License" src="https://img.shields.io/github/license/aravindrejidev/Spectra?style=plastic&label=LICENSE&labelColor=4a4f58&color=2ecc71" /></a>
-</p>
+<div align="center">
 
-<p align="center">
-  <img height="26" alt="Platform" src="https://img.shields.io/badge/PLATFORM-ANDROID-3ddc84?style=plastic&labelColor=4a4f58&logo=android&logoColor=white" />
-  <img height="26" alt="Kotlin" src="https://img.shields.io/badge/BUILT_WITH-KOTLIN-7f52ff?style=plastic&labelColor=4a4f58&logo=kotlin&logoColor=white" />
-  <img height="26" alt="Jetpack Compose" src="https://img.shields.io/badge/UI-JETPACK_COMPOSE-4285f4?style=plastic&labelColor=4a4f58&logo=jetpackcompose&logoColor=white" />
-  <img height="26" alt="FFmpeg" src="https://img.shields.io/badge/DECODER-FFMPEG-00a86b?style=plastic&labelColor=4a4f58&logo=ffmpeg&logoColor=white" />
-  <img height="26" alt="On-device" src="https://img.shields.io/badge/ANALYSIS-100%25_ON--DEVICE-ff6f91?style=plastic&labelColor=4a4f58" />
-</p>
+<br/>
+
+<img src="docs/logo.png" alt="Spectra app icon" width="200" />
+
 # Spectra
 
 ### Audio Forensics Analyzer for Android
@@ -23,13 +15,20 @@
 
 <br/>
 
-[![Latest release](https://img.shields.io/github/v/release/aravindrejidev/Spectra?style=for-the-badge&labelColor=0d1117)](https://github.com/aravindrejidev/Spectra/releases)
-[![Stars](https://img.shields.io/github/stars/aravindrejidev/Spectra?style=for-the-badge&labelColor=0d1117)](https://github.com/aravindrejidev/Spectra/stargazers)
-[![Downloads](https://img.shields.io/github/downloads/aravindrejidev/Spectra/total?style=for-the-badge&labelColor=0d1117)](https://github.com/aravindrejidev/Spectra/releases)
-[![License](https://img.shields.io/github/license/aravindrejidev/Spectra?style=for-the-badge&labelColor=0d1117)](https://github.com/aravindrejidev/Spectra/blob/main/LICENSE)
-![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white&labelColor=0d1117)
-![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack_Compose-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white&labelColor=0d1117)
+<p align="center">
+  <a href="https://github.com/aravindrejidev/Spectra/releases"><img alt="Release" src="https://img.shields.io/github/v/release/aravindrejidev/Spectra?style=for-the-badge&label=RELEASE&labelColor=0b1210&color=39ff88&logo=github&logoColor=39ff88" /></a>
+  <a href="https://github.com/aravindrejidev/Spectra/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/aravindrejidev/Spectra?style=for-the-badge&label=STARS&labelColor=0b1210&color=ffb020&logo=github&logoColor=ffb020" /></a>
+  <a href="https://github.com/aravindrejidev/Spectra/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/aravindrejidev/Spectra/total?style=for-the-badge&label=DOWNLOADS&labelColor=0b1210&color=3ea6ff&logo=github&logoColor=3ea6ff" /></a>
+  <a href="https://github.com/aravindrejidev/Spectra/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/aravindrejidev/Spectra?style=for-the-badge&label=LICENSE&labelColor=0b1210&color=cfd3da" /></a>
+</p>
 
+<p align="center">
+  <img alt="Platform" src="https://img.shields.io/badge/PLATFORM-ANDROID-3ddc84?style=for-the-badge&labelColor=0b1210&logo=android&logoColor=3ddc84" />
+  <img alt="Kotlin" src="https://img.shields.io/badge/BUILT_WITH-KOTLIN-7f52ff?style=for-the-badge&labelColor=0b1210&logo=kotlin&logoColor=7f52ff" />
+  <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-JETPACK_COMPOSE-4285f4?style=for-the-badge&labelColor=0b1210&logo=jetpackcompose&logoColor=4285f4" />
+  <img alt="FFmpeg" src="https://img.shields.io/badge/DECODER-FFMPEG-39ff88?style=for-the-badge&labelColor=0b1210&logo=ffmpeg&logoColor=39ff88" />
+  <img alt="On-device" src="https://img.shields.io/badge/ANALYSIS-100%25_ON--DEVICE-ffb020?style=for-the-badge&labelColor=0b1210" />
+</p>
 <br/>
 
 [**Showcase**](#showcase) · [**Features**](#features) · [**Verdict**](#verdict) · [**Download**](#download) · [**Architecture**](#architecture) · [**Contributing**](#contributing) · [**Support**](#support) · [**Disclaimer**](#disclaimer)
