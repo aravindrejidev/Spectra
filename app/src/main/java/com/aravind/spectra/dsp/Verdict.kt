@@ -104,6 +104,13 @@ object VerdictEngine {
         )
     }
 
+    private fun bandLimitedHiRes(c: CutoffResult): Auth = Auth(
+        Severity.INFO, "Band-limited hi-res",
+        "Content stops at ${khz(c.cutoffHz)}. That is more than a 44.1 or 48 kHz master can hold, so this is not a " +
+            "simple upsample. It looks like a native hi-res recording with an ultrasonic low-pass.",
+        null, null
+    )
+
     private fun upsampled(a: AnalysisResult, c: CutoffResult): Auth {
         val src = sourceRate(c.cutoffHz)
         val bonus = max(0, min(12, ((c.strengthDb - 20.0) / 2.0).toInt()))
@@ -191,7 +198,9 @@ object VerdictEngine {
                     "This test looks for common lossy fingerprints, so it can't prove a file is lossless.",
                 null, null
             )
-            a.sampleRate >= 88200 && ratio <= 0.56 && c.cutoffHz >= 18500.0 -> upsampled(a, c)
+            a.sampleRate >= 88200 && ratio <= 0.56 && c.cutoffHz >= 18500.0 ->
+                // above a 48 kHz master's Nyquist, but far below an 88.2 kHz one: no standard master explains it
+                if (c.cutoffHz > 24400.0 && c.cutoffHz < 39000.0) bandLimitedHiRes(c) else upsampled(a, c)
             c.nyquist < 20000.0 -> if (ratio >= 0.9) {
                 Auth(Severity.GOOD, "No lossy signature", "Edge at ${khz(c.cutoffHz)} is close to Nyquist.", null, null)
             } else {
