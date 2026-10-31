@@ -306,7 +306,7 @@ fun ReadoutGrid(items: List<Readout>) {
                                 letterSpacing = 1.sp,
                                 fontFamily = FontFamily.Monospace
                             )
-                            Lcd(cell.value, color = cell.tone, size = 15.sp, maxLines = 1)
+                            Lcd(cell.value, color = cell.tone, size = if (cell.value.length > 13) 12.sp else 15.sp, maxLines = 3)
                         }
                     }
                     if (row.size == 1) Spacer(Modifier.weight(1f))
