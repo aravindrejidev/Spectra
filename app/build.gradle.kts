@@ -54,6 +54,10 @@ android {
         jvmTarget = "17"
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     buildFeatures {
         compose = true
     }
@@ -73,6 +77,8 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
+
+    testImplementation("junit:junit:4.13.2")
 
     // Bit-exact decoding (community-maintained FFmpegKit fork, LGPL-3.0)
     implementation("dev.ffmpegkit-maintained:ffmpeg:8.1.9")
