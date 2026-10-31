@@ -96,14 +96,7 @@ fun SourceUnit(s: UiState.Success, onNew: () -> Unit, onShare: () -> Unit) {
                         "${codecName(s.info.codecMime)} · ${fmtBytes(s.fileSizeBytes)}",
                         color = SpectraColors.PhosphorDim,
                         size = 11.sp,
-                        maxLines = 1
-
-                        Lcd(
-                          "${codecName(s.info.codecMime)} · ${fmtBytes(s.fileSizeBytes)}",
-                          color = SpectraColors.PhosphorDim,
-                          size = 11.sp,
-                          maxLines = 1
-                        )
+                        maxLines = 2
                     )
                 }
             }
