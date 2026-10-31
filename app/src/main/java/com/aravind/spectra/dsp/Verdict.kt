@@ -75,8 +75,9 @@ object VerdictEngine {
     private fun rateLabel(r: Int): String =
         if (r % 1000 == 0) "${r / 1000} kHz" else String.format(Locale.US, "%.1f kHz", r / 1000.0)
 
-    private fun lossyContainer(c: CutoffResult, codecLabel: String, mime: String?, facts: FileFacts?): Auth {
-        val kbps = facts?.bitrateKbps
+    private fun lossyContainer(c: CutoffResult, codecLabel: String, mime: String?, facts: FileFacts?, channels: Int): Auth {
+        // MP3/AAC bitrates and the edge table are for stereo; surround streams spread their bitrate over more channels
+        val kbps = facts?.bitrateKbps?.let { it / max(1, (channels + 1) / 2) }
         val mp3OrAac = mime == "audio/mpeg" || mime == "audio/mp4a-latm"
         if (mp3OrAac && kbps != null && kbps >= 224 && c.hasEdge && c.cutoffHz < 18000.0) {
             var s = 60
@@ -92,7 +93,8 @@ object VerdictEngine {
                 s, guessLossyBitrate(c.cutoffHz) + " source"
             )
         }
-        return lossyContainerBasic(c, codecLabel)
+        val basic = lossyContainerBasic(c, codecLabel)
+        return if (channels > 2 && basic.source != null) basic.copy(source = basic.source + " per stereo pair") else basic
     }
 
     private fun lossyContainerBasic(c: CutoffResult, codecLabel: String): Auth {
@@ -191,7 +193,7 @@ object VerdictEngine {
         val lossless = isLossless(codecMime)
 
         val auth: Auth = when {
-            !lossless -> lossyContainer(c, codecLabel, codecMime, facts)
+            !lossless -> lossyContainer(c, codecLabel, codecMime, facts, a.channelCount)
             !c.hasEdge -> Auth(
                 Severity.GOOD, "No lossy signature",
                 "No brick-wall cutoff found; the spectrum reaches the top of the band smoothly. " +
