@@ -42,7 +42,13 @@ fun codecName(mime: String?): String = when (mime?.lowercase()) {
     "audio/x-tta" -> "TTA"
     "audio/x-tak" -> "TAK"
     "audio/x-wmalossless" -> "WMA Lossless"
-    else -> mime ?: "Unknown"
+    "audio/ac3", "audio/x-ac3" -> "Dolby Digital (AC-3)"
+    "audio/eac3", "audio/x-eac3" -> "Dolby Digital Plus (E-AC-3)"
+    "audio/eac3-joc" -> "Dolby Digital Plus (Atmos)"
+    "audio/true-hd", "audio/x-truehd" -> "Dolby TrueHD"
+    "audio/vnd.dts", "audio/x-dts" -> "DTS"
+    "audio/vnd.dts.hd", "audio/x-dts-hd" -> "DTS-HD"
+    else -> mime?.removePrefix("audio/")?.removePrefix("x-")?.uppercase() ?: "Unknown"
 }
 
 fun buildReport(s: UiState.Success): String {
