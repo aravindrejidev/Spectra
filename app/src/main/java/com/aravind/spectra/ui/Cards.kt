@@ -89,14 +89,21 @@ fun SourceUnit(s: UiState.Success, onNew: () -> Unit, onShare: () -> Unit) {
                 }
                 Column(Modifier.weight(1f)) {
                     Lcd(s.tags.title ?: s.fileName, size = 16.sp, weight = FontWeight.Bold, maxLines = 2)
-                    s.tags.artist?.let { Lcd(it, color = SpectraColors.Amber, size = 13.sp, maxLines = 1) }
-                    s.tags.album?.let { Lcd(it, color = SpectraColors.PhosphorDim, size = 12.sp, maxLines = 1) }
+                    s.tags.artist?.let { Lcd(it, color = SpectraColors.Amber, size = 13.sp, maxLines = 2) }
+                    s.tags.album?.let { Lcd(it, color = SpectraColors.PhosphorDim, size = 12.sp, maxLines = 2) }
                     Spacer(Modifier.height(4.dp))
                     Lcd(
                         "${codecName(s.info.codecMime)} · ${fmtBytes(s.fileSizeBytes)}",
                         color = SpectraColors.PhosphorDim,
                         size = 11.sp,
                         maxLines = 1
+
+                        Lcd(
+                          "${codecName(s.info.codecMime)} · ${fmtBytes(s.fileSizeBytes)}",
+                          color = SpectraColors.PhosphorDim,
+                          size = 11.sp,
+                          maxLines = 1
+                        )
                     )
                 }
             }
