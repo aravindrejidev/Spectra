@@ -59,7 +59,12 @@ fun buildReport(s: UiState.Success): String {
         appendLine()
         appendLine("Codec: ${codecName(s.info.codecMime)}  Decoder: ${s.info.engine}")
         s.info.facts?.let { fct ->
-            appendLine("Container: ${fct.formatLong ?: fct.formatName ?: "unknown"}" + (fct.profile?.let { "  Profile: $it" } ?: ""))
+            val container = fct.formatLong ?: fct.formatName
+            if (container != null) {
+                appendLine("Container: $container" + (fct.profile?.let { "  Profile: $it" } ?: ""))
+            } else {
+                fct.profile?.let { appendLine("Profile: $it") }
+            }
             fct.bitrateKbps?.let { appendLine("Bitrate: $it kbps") }
             fct.encoder?.let { appendLine("Encoder tag: $it") }
         }
