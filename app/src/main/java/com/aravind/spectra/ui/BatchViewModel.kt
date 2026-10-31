@@ -57,7 +57,8 @@ data class BatchRow(
     val edgeStrengthDb: Double,
     val edgeDropDb: Double,
     val lock: Double?,
-    val warnings: Int,
+    val authenticityFlags: Int,
+    val masteringFlags: Int,
     val bitrateKbps: Int?,
     val encoder: String?
 )
@@ -220,7 +221,8 @@ class BatchViewModel(app: Application) : AndroidViewModel(app) {
             edgeStrengthDb = a.cutoff.strengthDb,
             edgeDropDb = a.cutoff.dropDb,
             lock = a.cutoff.lockRatio,
-            warnings = v.findings.count { it.severity == Severity.WARN || it.severity == Severity.BAD },
+            authenticityFlags = v.findings.count { (it.severity == Severity.WARN || it.severity == Severity.BAD) && it.label !in MASTERING_LABELS },
+            masteringFlags = v.findings.count { (it.severity == Severity.WARN || it.severity == Severity.BAD) && it.label in MASTERING_LABELS },
             bitrateKbps = s.info.facts?.bitrateKbps,
             encoder = s.info.facts?.encoder
         )
@@ -277,6 +279,9 @@ object FolderScanner {
 
 // ---------------------------------------------------------------- CSV
 
+/** Findings about how the track was mastered, as opposed to whether the file is what it claims to be. */
+private val MASTERING_LABELS = setOf("Clipping", "True peak", "Dynamics", "Loudness", "Stereo", "DC offset")
+
 private fun esc(s: String): String =
     if (s.any { it == ',' || it == '"' || it == '\n' || it == '\r' }) "\"" + s.replace("\"", "\"\"") + "\"" else s
 
@@ -287,7 +292,7 @@ fun batchCsv(items: List<BatchItem>): String = buildString {
     appendLine(
         "path,status,verdict,evidence_pct,estimated_source,codec,sample_rate_hz,channels,declared_bits," +
             "effective_bits,duration_s,size_bytes,lufs,lra_lu,dr,sample_peak_db,true_peak_db,clip_runs," +
-            "edge_found,edge_hz,edge_steepness_db,edge_drop_db,hf_persistence,warnings,bitrate_kbps,encoder,error"
+            "edge_found,edge_hz,edge_steepness_db,edge_drop_db,hf_persistence,authenticity_flags,mastering_flags,bitrate_kbps,encoder,error"
     )
     for (item in items) {
         val r = item.row
@@ -316,7 +321,8 @@ fun batchCsv(items: List<BatchItem>): String = buildString {
                 if (r != null && r.hasEdge) num(r.edgeStrengthDb, 1) else "",
                 if (r != null && r.hasEdge) num(r.edgeDropDb, 1) else "",
                 num(r?.lock, 2),
-                r?.warnings?.toString() ?: "",
+                r?.authenticityFlags?.toString() ?: "",
+                r?.masteringFlags?.toString() ?: "",
                 r?.bitrateKbps?.toString() ?: "",
                 esc(r?.encoder ?: ""),
                 esc(item.error ?: "")
