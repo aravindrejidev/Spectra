@@ -16,6 +16,7 @@ private const val MAX_STORE = STORE_TARGET + 512
 private const val DR_BLOCK_SUBS = 30 // 3 s of 100 ms sub-blocks
 private const val SCALE = 4.0 / FFT_SIZE // 0 dBFS sine == 0 dB
 private const val SCALE_SQ = SCALE * SCALE
+private const val MAX_SPEC_CH = 8 // channels that get their own spectrogram view
 
 fun toDb(x: Double): Double = 20.0 * log10(max(x, 1e-9))
 
@@ -139,7 +140,10 @@ class StreamAnalyzer(
     private val exactTruePeak: Boolean = AppSettings.exactTruePeak,
     private val clipThreshold: Double = AppSettings.clipThreshold
 ) {
-    private val specCh = min(numCh, 2)
+    private val specCh = min(numCh, 2) // front pair: drives the edge test and the L / R / MID / SIDE views
+
+    // channels 3 and up get a spectrogram view of their own
+    private val extraCh = if (numCh > 2) min(numCh, MAX_SPEC_CH) - 2 else 0
 
     // only the per-frame band levels for the edge-persistence test are thinned out (memory)
     private val storeStride =
@@ -177,7 +181,7 @@ class StreamAnalyzer(
     private var sSide = 0.0
 
     // STFT
-    private val winBuf = Array(specCh) { FloatArray(FFT_SIZE) }
+    private val winBuf = Array(specCh + extraCh) { FloatArray(FFT_SIZE) }
     private var fill = 0
     private var frameIndex = 0
     private var frameCount = 0
@@ -185,7 +189,7 @@ class StreamAnalyzer(
     private var usedCols = 0
     private val re = DoubleArray(FFT_SIZE)
     private val im = DoubleArray(FFT_SIZE)
-    private val numViews = if (specCh == 2) 5 else 1
+    private val numViews = (if (specCh == 2) 5 else 1) + extraCh
     private val sumP = Array(numViews) { DoubleArray(COLS * ROWS) }
     private val cnt = IntArray(COLS * ROWS)
     private val avgAccum = DoubleArray(BINS)
@@ -336,12 +340,12 @@ class StreamAnalyzer(
         var pos = 0
         while (pos < frames) {
             val n = min(FFT_SIZE - fill, frames - pos)
-            for (c in 0 until specCh) System.arraycopy(data[c], pos, winBuf[c], fill, n)
+            for (c in 0 until specCh + extraCh) System.arraycopy(data[c], pos, winBuf[c], fill, n)
             fill += n
             pos += n
             if (fill == FFT_SIZE) {
                 onFrame()
-                for (c in 0 until specCh) System.arraycopy(winBuf[c], HOP, winBuf[c], 0, HOP)
+                for (c in 0 until specCh + extraCh) System.arraycopy(winBuf[c], HOP, winBuf[c], 0, HOP)
                 fill = HOP
             }
         }
@@ -419,6 +423,8 @@ class StreamAnalyzer(
             }
         }
 
+        if (extraCh > 0) accumulateExtraChannels(base)
+
         if (f % storeStride == 0 && storedFrames < MAX_STORE) {
             val o = storedFrames * NB
             for (b in 0 until NB) {
@@ -428,6 +434,42 @@ class StreamAnalyzer(
         }
         Arrays.fill(bandAcc, 0.0)
         frameCount++
+    }
+
+    /** Channels 3 and up: two real channels per complex FFT, one spectrogram view for each. */
+    private fun accumulateExtraChannels(base: Int) {
+        val w = Fft.hann
+        var c = 2
+        var view = 5
+        while (c < 2 + extraCh) {
+            val a = winBuf[c]
+            val b = if (c + 1 < 2 + extraCh) winBuf[c + 1] else null
+            for (i in 0 until FFT_SIZE) {
+                re[i] = a[i] * w[i]
+                im[i] = if (b != null) b[i] * w[i] else 0.0
+            }
+            Fft.transform(re, im)
+            val sa = sumP[view]
+            val sb = if (b != null) sumP[view + 1] else null
+            for (k in 0 until BINS) {
+                val idx = base + (k shr 2)
+                val nk = (FFT_SIZE - k) and (FFT_SIZE - 1)
+                val p = re[k]
+                val q = im[k]
+                val r = re[nk]
+                val s = im[nk]
+                val ar = (p + r) * 0.5
+                val ai = (q - s) * 0.5
+                sa[idx] += ar * ar + ai * ai
+                if (sb != null) {
+                    val br = (q + s) * 0.5
+                    val bi = (r - p) * 0.5
+                    sb[idx] += br * br + bi * bi
+                }
+            }
+            c += 2
+            view += 2
+        }
     }
 
     private fun mergeColumns() {
@@ -566,7 +608,7 @@ class StreamAnalyzer(
 
     fun finish(): AnalysisResult {
         if (frameIndex == 0 && fill > 0) { // very short file: zero-pad one frame
-            for (c in 0 until specCh) Arrays.fill(winBuf[c], fill, FFT_SIZE, 0f)
+            for (c in 0 until specCh + extraCh) Arrays.fill(winBuf[c], fill, FFT_SIZE, 0f)
             onFrame()
         }
         check(totalFrames > 0 && frameCount > 0) { "Not enough audio data to analyze" }
@@ -626,6 +668,7 @@ class StreamAnalyzer(
             views["ch2"] = matrix(2)
             views["mid"] = matrix(3)
             views["side"] = matrix(4)
+            for (k in 0 until extraCh) views["ch${k + 3}"] = matrix(5 + k)
         }
 
         return AnalysisResult(

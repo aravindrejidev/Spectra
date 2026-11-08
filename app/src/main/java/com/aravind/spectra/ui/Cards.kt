@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +41,17 @@ import com.aravind.spectra.ui.theme.SpectraColors
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+/** Standard channel names for the layouts whose order is unambiguous (stereo, 5.1, 7.1); CHn otherwise. */
+internal fun channelLabel(count: Int, index: Int): String {
+    val names = when (count) {
+        2 -> listOf("L", "R")
+        6 -> listOf("L", "R", "C", "LFE", "LS", "RS")
+        8 -> listOf("L", "R", "C", "LFE", "LB", "RB", "LS", "RS")
+        else -> null
+    }
+    return names?.getOrNull(index) ?: "CH${index + 1}"
+}
 
 fun sevColor(s: Severity): Color = when (s) {
     Severity.GOOD -> SpectraColors.Green
@@ -183,14 +196,18 @@ fun SpectrogramUnit(
     RackPanel("Spectrogram", lamp = SpectraColors.Phosphor) {
         val names = listOf(
             "all" to (if (a.channelCount == 1) "MONO" else "L+R"),
-            "ch1" to "L",
-            "ch2" to "R",
+            "ch1" to channelLabel(a.channelCount, 0),
+            "ch2" to channelLabel(a.channelCount, 1),
             "mid" to "MID",
             "side" to "SIDE"
-        ).filter { a.views.containsKey(it.first) }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        ).plus((2 until a.channelCount).map { "ch${it + 1}" to channelLabel(a.channelCount, it) })
+            .filter { a.views.containsKey(it.first) }
+        Row(
+            Modifier.fillMaxWidth().then(if (names.size > 5) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
             names.forEach { (key, label) ->
-                HwButton(label, Modifier.weight(1f), active = view == key, led = SpectraColors.Phosphor, height = 54.dp, compact = true) {
+                HwButton(label, if (names.size > 5) Modifier.width(64.dp) else Modifier.weight(1f), active = view == key, led = SpectraColors.Phosphor, height = 54.dp, compact = true) {
                     onView(key)
                 }
             }
@@ -237,7 +254,7 @@ fun LevelsUnit(a: AnalysisResult) {
         GlassScreen {
             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 a.channels.forEachIndexed { i, ch ->
-                    val name = if (a.channelCount == 2) (if (i == 0) "L" else "R") else "CH${i + 1}"
+                    val name = channelLabel(a.channelCount, i)
                     Column {
                         Lcd(
                             "$name  PK ${f1(ch.peakDb)}  TP ${f1(ch.truePeakDb)}",
