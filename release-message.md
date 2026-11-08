@@ -1,4 +1,2 @@
 ## What's new
-- In-app updater: new versions are detected automatically when the app opens
-- Shows all tags stored in a song, ready to edit
-- Bug fixes and improvements
+- Spectrogram: 5.1 and 7.1 files now get a view for every channel (L, R, C, LFE, LS, RS and so on), and the Levels panel shows the channel names
