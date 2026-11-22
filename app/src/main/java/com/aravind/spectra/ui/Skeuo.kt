@@ -67,18 +67,27 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aravind.spectra.settings.AppSettings
+import com.aravind.spectra.ui.theme.Pal
 import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.isModernUi
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
 fun Color.shade(f: Float): Color = Color(red * f, green * f, blue * f, alpha)
 
+/** One label / value cell. The default tone is the classic phosphor green so exported reports stay the same in either look. */
 data class Readout(val label: String, val value: String, val tone: Color = SpectraColors.Phosphor)
+
+/** The page backdrop: near-black with red glows (Modern) or dark walnut (Classic). */
+@Composable
+fun SkeuoBackground(content: @Composable BoxScope.() -> Unit) {
+    if (isModernUi) ModernBackground(content) else ClassicBackground(content)
+}
 
 /** Dark walnut backdrop with faint grain and a vignette. */
 @Composable
-fun SkeuoBackground(content: @Composable BoxScope.() -> Unit) {
+private fun ClassicBackground(content: @Composable BoxScope.() -> Unit) {
     Box(
         Modifier
             .fillMaxSize()
@@ -127,11 +136,24 @@ fun Engraved(
     text: String,
     modifier: Modifier = Modifier,
     size: TextUnit = 12.sp,
-    color: Color = SpectraColors.InkSoft,
+    color: Color = Pal.InkSoft,
     weight: FontWeight = FontWeight.Bold,
     spacing: TextUnit = 1.sp,
     maxLines: Int = Int.MAX_VALUE
 ) {
+    if (isModernUi) {
+        Text(
+            text,
+            modifier,
+            color = color,
+            fontSize = size,
+            fontWeight = weight,
+            letterSpacing = (spacing.value * 0.6f).sp,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis
+        )
+        return
+    }
     Text(
         text,
         modifier,
@@ -148,11 +170,23 @@ fun Engraved(
 fun Lcd(
     text: String,
     modifier: Modifier = Modifier,
-    color: Color = SpectraColors.Phosphor,
+    color: Color = Pal.Phosphor,
     size: TextUnit = 14.sp,
     weight: FontWeight = FontWeight.Medium,
     maxLines: Int = Int.MAX_VALUE
 ) {
+    if (isModernUi) {
+        Text(
+            text,
+            modifier,
+            color = color,
+            fontSize = size,
+            fontWeight = weight,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis
+        )
+        return
+    }
     Text(
         text,
         modifier,
@@ -166,7 +200,7 @@ fun Lcd(
     )
 }
 
-/** A brushed-aluminium rack unit with engraved title, power lamp and corner screws. */
+/** A titled card: dark glass with a red accent bar (Modern) or a brushed-aluminium rack unit (Classic). */
 @Composable
 fun RackPanel(
     title: String,
@@ -175,6 +209,21 @@ fun RackPanel(
     lampOn: Boolean = true,
     lampPulse: Boolean = false,
     shine: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    if (isModernUi) ModernCard(title, modifier, lamp, lampOn, lampPulse, shine, content)
+    else ClassicRackPanel(title, modifier, lamp, lampOn, lampPulse, shine, content)
+}
+
+/** A brushed-aluminium rack unit with engraved title, power lamp and corner screws. */
+@Composable
+private fun ClassicRackPanel(
+    title: String,
+    modifier: Modifier,
+    lamp: Color?,
+    lampOn: Boolean,
+    lampPulse: Boolean,
+    shine: Boolean,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val shape = RoundedCornerShape(16.dp)
@@ -255,9 +304,15 @@ fun RackPanel(
     }
 }
 
-/** Recessed dark glass display with bezel, inner shadow and glare. */
+/** A recessed display area inside a card. */
 @Composable
 fun GlassScreen(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+    if (isModernUi) ModernInset(modifier, content) else ClassicGlassScreen(modifier, content)
+}
+
+/** Recessed dark glass display with bezel, inner shadow and glare. */
+@Composable
+private fun ClassicGlassScreen(modifier: Modifier, content: @Composable BoxScope.() -> Unit) {
     Box(
         modifier
             .fillMaxWidth()
@@ -293,6 +348,11 @@ fun GlassScreen(modifier: Modifier = Modifier, content: @Composable BoxScope.() 
 
 @Composable
 fun ReadoutGrid(items: List<Readout>) {
+    if (isModernUi) ModernReadoutGrid(items) else ClassicReadoutGrid(items)
+}
+
+@Composable
+private fun ClassicReadoutGrid(items: List<Readout>) {
     GlassScreen {
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
             for (row in items.chunked(2)) {
@@ -318,6 +378,11 @@ fun ReadoutGrid(items: List<Readout>) {
 
 @Composable
 fun Led(color: Color, on: Boolean, diameter: Dp = 10.dp, modifier: Modifier = Modifier) {
+    if (isModernUi) ModernDot(color, on, diameter, modifier) else ClassicLed(color, on, diameter, modifier)
+}
+
+@Composable
+private fun ClassicLed(color: Color, on: Boolean, diameter: Dp, modifier: Modifier) {
     Canvas(modifier.size(diameter)) {
         val r = this.size.minDimension / 2f
         val c = this.center
@@ -335,7 +400,10 @@ fun Led(color: Color, on: Boolean, diameter: Dp = 10.dp, modifier: Modifier = Mo
     }
 }
 
-/** Latching push button: raised when idle, pressed-in when active/held. */
+/**
+ * A push button. [primary] marks the main call to action (red with a glow in the Modern look) and [icon] adds a
+ * leading icon there; the Classic look ignores both.
+ */
 @Composable
 fun HwButton(
     label: String,
@@ -344,6 +412,23 @@ fun HwButton(
     led: Color? = null,
     height: Dp = 44.dp,
     compact: Boolean = false,
+    primary: Boolean = false,
+    icon: MIconKind? = null,
+    onClick: () -> Unit
+) {
+    if (isModernUi) ModernButton(label, modifier, active, led, height, compact, primary, icon, onClick)
+    else ClassicHwButton(label, modifier, active, led, height, compact, onClick)
+}
+
+/** Latching push button: raised when idle, pressed-in when active/held. */
+@Composable
+private fun ClassicHwButton(
+    label: String,
+    modifier: Modifier,
+    active: Boolean,
+    led: Color?,
+    height: Dp,
+    compact: Boolean,
     onClick: () -> Unit
 ) {
     val src = remember { MutableInteractionSource() }
@@ -403,7 +488,7 @@ fun HwButton(
     }
 }
 
-/** Vintage analog VU meter with a spring-damped needle. */
+/** A level gauge: a half-circle arc (Modern) or a vintage analog VU meter (Classic). */
 @Composable
 fun VuMeter(
     value: Float?,
@@ -412,6 +497,20 @@ fun VuMeter(
     redFrom: Float,
     title: String,
     modifier: Modifier = Modifier
+) {
+    if (isModernUi) ModernVuMeter(value, minV, maxV, redFrom, title, modifier)
+    else ClassicVuMeter(value, minV, maxV, redFrom, title, modifier)
+}
+
+/** Vintage analog VU meter with a spring-damped needle. */
+@Composable
+private fun ClassicVuMeter(
+    value: Float?,
+    minV: Float,
+    maxV: Float,
+    redFrom: Float,
+    title: String,
+    modifier: Modifier
 ) {
     var armed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { armed = true }
@@ -497,7 +596,7 @@ fun VuMeter(
     }
 }
 
-/** Segmented LED bar meter (green -> amber -> red), sweeps in on first draw. */
+/** A level bar that sweeps in on first draw: smooth (Modern) or segmented LEDs (Classic). */
 @Composable
 fun LedLadder(
     valueDb: Double,
@@ -506,6 +605,20 @@ fun LedLadder(
     modifier: Modifier = Modifier,
     segments: Int = 28,
     tint: Color? = null
+) {
+    if (isModernUi) ModernLadder(valueDb, minDb, maxDb, modifier, tint)
+    else ClassicLedLadder(valueDb, minDb, maxDb, modifier, segments, tint)
+}
+
+/** Segmented LED bar meter (green -> amber -> red), sweeps in on first draw. */
+@Composable
+private fun ClassicLedLadder(
+    valueDb: Double,
+    minDb: Double,
+    maxDb: Double,
+    modifier: Modifier,
+    segments: Int,
+    tint: Color?
 ) {
     var armed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { armed = true }
@@ -542,13 +655,25 @@ fun LedLadder(
     }
 }
 
-/** Horizontal fader with a metal cap. */
+/** Horizontal slider: a round red knob (Modern) or a fader with a metal cap (Classic). */
 @Composable
 fun HwFader(
     value: Float,
     onValueChange: (Float) -> Unit,
     range: ClosedFloatingPointRange<Float>,
     modifier: Modifier = Modifier
+) {
+    if (isModernUi) ModernFader(value, onValueChange, range, modifier)
+    else ClassicHwFader(value, onValueChange, range, modifier)
+}
+
+/** Horizontal fader with a metal cap. */
+@Composable
+private fun ClassicHwFader(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    range: ClosedFloatingPointRange<Float>,
+    modifier: Modifier
 ) {
     val cb by rememberUpdatedState(onValueChange)
     val capW = 26.dp

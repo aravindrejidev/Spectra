@@ -52,7 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
 import com.aravind.spectra.update.UpdateChecker
 import com.aravind.spectra.update.UpdateState
 import com.aravind.spectra.update.UpdateViewModel
@@ -70,12 +70,12 @@ private fun titleOf(s: UpdateState): String = when (s) {
 }
 
 private fun lampOf(s: UpdateState): Color = when (s) {
-    is UpdateState.Available -> SpectraColors.Amber
-    is UpdateState.Downloading -> SpectraColors.Blue
-    is UpdateState.Ready -> SpectraColors.Green
-    is UpdateState.Failed -> SpectraColors.Red
-    is UpdateState.Welcome -> SpectraColors.Green
-    is UpdateState.Hidden -> SpectraColors.Amber
+    is UpdateState.Available -> Pal.Amber
+    is UpdateState.Downloading -> Pal.Blue
+    is UpdateState.Ready -> Pal.Green
+    is UpdateState.Failed -> Pal.Red
+    is UpdateState.Welcome -> Pal.Green
+    is UpdateState.Hidden -> Pal.Amber
 }
 
 private fun fmtMb(bytes: Double): String = String.format(Locale.US, "%.1f MB", bytes / 1_000_000.0)
@@ -158,9 +158,9 @@ private fun UpdateBody(st: UpdateState, vm: UpdateViewModel) {
                 UpdateBadge()
                 Spacer(Modifier.width(14.dp))
                 Column {
-                    Lcd(rememberTyped("NEW VERSION READY"), color = SpectraColors.Amber, size = 15.sp, weight = FontWeight.Bold)
+                    Lcd(rememberTyped(lcdCase("New version ready")), color = Pal.Amber, size = 15.sp, weight = FontWeight.Bold)
                     Spacer(Modifier.height(2.dp))
-                    Text("Spectra v${st.info.version} is out.", color = SpectraColors.InkSoft, fontSize = 13.sp)
+                    Text("Spectra v${st.info.version} is out.", color = Pal.InkSoft, fontSize = 13.sp)
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -169,11 +169,18 @@ private fun UpdateBody(st: UpdateState, vm: UpdateViewModel) {
             NotesPlate(st.info.notes)
             if (st.info.sizeBytes > 0) {
                 Spacer(Modifier.height(8.dp))
-                Engraved("DOWNLOAD SIZE  ${fmtBytes(st.info.sizeBytes)}", size = 11.sp, spacing = 1.sp)
+                Engraved(lcdCase("Download size") + "  ${fmtBytes(st.info.sizeBytes)}", size = 11.sp, spacing = 1.sp)
             }
             Spacer(Modifier.height(16.dp))
             GlowFrame {
-                HwButton("DOWNLOAD & INSTALL", Modifier.fillMaxWidth(), height = 52.dp, onClick = vm::startDownload)
+                HwButton(
+                    "DOWNLOAD & INSTALL",
+                    Modifier.fillMaxWidth(),
+                    height = 52.dp,
+                    primary = true,
+                    icon = MIconKind.Download,
+                    onClick = vm::startDownload
+                )
             }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -184,11 +191,11 @@ private fun UpdateBody(st: UpdateState, vm: UpdateViewModel) {
         is UpdateState.Downloading -> DownloadBody(st, vm)
         is UpdateState.Ready -> {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                SuccessPulse(color = if (st.needsPermission) SpectraColors.Amber else SpectraColors.Green)
+                SuccessPulse(color = if (st.needsPermission) Pal.Amber else Pal.Green)
                 Spacer(Modifier.height(6.dp))
                 Lcd(
-                    rememberTyped(if (st.needsPermission) "ALLOW INSTALLS FIRST" else "READY TO INSTALL"),
-                    color = if (st.needsPermission) SpectraColors.Amber else SpectraColors.Green,
+                    rememberTyped(if (st.needsPermission) lcdCase("Allow installs first") else lcdCase("Ready to install")),
+                    color = if (st.needsPermission) Pal.Amber else Pal.Green,
                     size = 16.sp,
                     weight = FontWeight.Bold
                 )
@@ -199,7 +206,7 @@ private fun UpdateBody(st: UpdateState, vm: UpdateViewModel) {
                     } else {
                         "Android's installer should open now. If it didn't, tap INSTALL."
                     },
-                    color = SpectraColors.InkSoft,
+                    color = Pal.InkSoft,
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
                     textAlign = TextAlign.Center
@@ -207,7 +214,7 @@ private fun UpdateBody(st: UpdateState, vm: UpdateViewModel) {
             }
             Spacer(Modifier.height(16.dp))
             GlowFrame {
-                HwButton("INSTALL", Modifier.fillMaxWidth(), height = 52.dp, onClick = vm::installAgain)
+                HwButton("INSTALL", Modifier.fillMaxWidth(), height = 52.dp, primary = true, onClick = vm::installAgain)
             }
             Spacer(Modifier.height(10.dp))
             HwButton("LATER", Modifier.fillMaxWidth(), height = 40.dp, onClick = vm::later)
@@ -215,9 +222,9 @@ private fun UpdateBody(st: UpdateState, vm: UpdateViewModel) {
         is UpdateState.Failed -> {
             GlassScreen {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Lcd("UPDATE FAILED", color = SpectraColors.Red, size = 15.sp, weight = FontWeight.Bold)
+                    Lcd(lcdCase("Update failed"), color = Pal.Red, size = 15.sp, weight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
-                    Lcd(st.message, color = SpectraColors.Amber, size = 12.sp)
+                    Lcd(st.message, color = Pal.Amber, size = 12.sp)
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -228,12 +235,12 @@ private fun UpdateBody(st: UpdateState, vm: UpdateViewModel) {
         }
         is UpdateState.Welcome -> {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                UpdateBadge(color = SpectraColors.Green)
+                UpdateBadge(color = Pal.Green)
                 Spacer(Modifier.width(14.dp))
                 Column {
-                    Lcd(rememberTyped("UPDATED TO v${st.info.version}"), color = SpectraColors.Green, size = 15.sp, weight = FontWeight.Bold)
+                    Lcd(rememberTyped(lcdCase("Updated to") + " v${st.info.version}"), color = Pal.Green, size = 15.sp, weight = FontWeight.Bold)
                     Spacer(Modifier.height(2.dp))
-                    Text("Here is what changed in this version.", color = SpectraColors.InkSoft, fontSize = 13.sp)
+                    Text("Here is what changed in this version.", color = Pal.InkSoft, fontSize = 13.sp)
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -274,8 +281,8 @@ private fun DownloadBody(st: UpdateState.Downloading, vm: UpdateViewModel) {
     GlassScreen {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Lcd("DOWNLOADING v${st.info.version}", Modifier.weight(1f), size = 13.sp)
-                Lcd("${(pct * 100f).roundToInt()}%", color = SpectraColors.Amber, size = 26.sp, weight = FontWeight.Bold)
+                Lcd(lcdCase("Downloading") + " v${st.info.version}", Modifier.weight(1f), size = 13.sp)
+                Lcd("${(pct * 100f).roundToInt()}%", color = Pal.Amber, size = 26.sp, weight = FontWeight.Bold)
             }
             Spacer(Modifier.height(14.dp))
             ChargeBar(st.progress)
@@ -283,10 +290,10 @@ private fun DownloadBody(st: UpdateState.Downloading, vm: UpdateViewModel) {
                 Spacer(Modifier.height(10.dp))
                 val left = if (speed > 1.0) ((total - done) / speed).roundToInt() else -1
                 Row(Modifier.fillMaxWidth()) {
-                    Lcd("${fmtMb(done)} / ${fmtMb(total)}", Modifier.weight(1f), color = SpectraColors.PhosphorDim, size = 11.sp)
+                    Lcd("${fmtMb(done)} / ${fmtMb(total)}", Modifier.weight(1f), color = Pal.PhosphorDim, size = 11.sp)
                     Lcd(
                         if (left >= 0) "${fmtMb(speed)}/s · ${fmtEta(left)} left" else "measuring speed…",
-                        color = SpectraColors.PhosphorDim,
+                        color = Pal.PhosphorDim,
                         size = 11.sp
                     )
                 }
@@ -312,15 +319,15 @@ private fun VersionPlate(current: String, latest: String) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Lcd("CURRENT", color = SpectraColors.PhosphorDim, size = 10.sp)
+                Lcd(lcdCase("Current"), color = Pal.PhosphorDim, size = 10.sp)
                 Lcd("v$current", size = 18.sp, weight = FontWeight.Bold)
             }
             Box(Modifier.graphicsLayer { translationX = dx * 8.dp.toPx() }) {
-                Lcd("→", color = SpectraColors.Amber, size = 26.sp)
+                Lcd("→", color = Pal.Amber, size = 26.sp)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Lcd("NEW", color = SpectraColors.PhosphorDim, size = 10.sp)
-                Lcd(rememberTyped("v$latest", 60L), color = SpectraColors.Amber, size = 18.sp, weight = FontWeight.Bold)
+                Lcd(lcdCase("New"), color = Pal.PhosphorDim, size = 10.sp)
+                Lcd(rememberTyped("v$latest", 60L), color = Pal.Amber, size = 18.sp, weight = FontWeight.Bold)
             }
         }
     }
@@ -331,7 +338,7 @@ private fun NotesPlate(notes: String) {
     val lines = remember(notes) {
         UpdateChecker.cleanNotes(notes).lines().map { it.trim() }.filter { it.isNotEmpty() }
     }
-    Engraved("WHAT'S NEW", size = 11.sp, spacing = 1.5.sp)
+    Engraved(lcdCase("What's new"), size = 11.sp, spacing = 1.5.sp)
     Spacer(Modifier.height(6.dp))
     GlassScreen {
         Column(
@@ -342,7 +349,7 @@ private fun NotesPlate(notes: String) {
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (lines.isEmpty()) Lcd("No release notes.", color = SpectraColors.PhosphorDim, size = 12.sp)
+            if (lines.isEmpty()) Lcd("No release notes.", color = Pal.PhosphorDim, size = 12.sp)
             lines.forEachIndexed { i, line -> NoteLine(line, i) }
         }
     }
@@ -367,18 +374,18 @@ private fun NoteLine(line: String, index: Int) {
             }
     ) {
         if (bullet) {
-            Lcd("•", color = SpectraColors.Amber, size = 12.sp)
+            Lcd("•", color = Pal.Amber, size = 12.sp)
             Spacer(Modifier.width(8.dp))
             Text(
                 line.removePrefix("•").trim(),
                 modifier = Modifier.weight(1f),
-                color = SpectraColors.Phosphor.copy(alpha = 0.92f),
+                color = Pal.Phosphor.copy(alpha = 0.92f),
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
-                fontFamily = FontFamily.Monospace
+                fontFamily = Pal.Mono
             )
         } else {
-            Lcd(line.uppercase(), color = SpectraColors.Amber, size = 12.sp, weight = FontWeight.Bold)
+            Lcd(lcdCase(line), color = Pal.Amber, size = 12.sp, weight = FontWeight.Bold)
         }
     }
 }

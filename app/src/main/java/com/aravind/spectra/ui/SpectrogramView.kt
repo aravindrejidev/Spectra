@@ -43,7 +43,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aravind.spectra.dsp.ChannelSpectrogram
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -115,7 +115,7 @@ fun SpectrogramPane(
     Column(Modifier.padding(start = 6.dp, end = 10.dp, top = 10.dp, bottom = 8.dp)) {
         Row(Modifier.fillMaxWidth().height(240.dp)) {
             Canvas(Modifier.width(34.dp).fillMaxHeight()) {
-                paint.color = SpectraColors.PhosphorDim.toArgb()
+                paint.color = Pal.PhosphorDim.toArgb()
                 paint.textSize = 9.sp.toPx()
                 paint.textAlign = android.graphics.Paint.Align.RIGHT
                 paint.typeface = Typeface.MONOSPACE
@@ -163,7 +163,7 @@ fun SpectrogramPane(
                     Canvas(Modifier.fillMaxSize()) {
                         val x = cur.x * size.width
                         val y = cur.y * size.height
-                        val col = SpectraColors.Phosphor.copy(alpha = 0.9f)
+                        val col = Pal.Plot.copy(alpha = 0.9f)
                         drawLine(col, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
                         drawLine(col, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
                         drawCircle(col, 5.dp.toPx(), Offset(x, y), style = Stroke(1.5.dp.toPx()))
@@ -179,7 +179,7 @@ fun SpectrogramPane(
             for (i in 0..4) {
                 Text(
                     fmtDurationSec(durationSec * i / 4.0),
-                    color = SpectraColors.PhosphorDim,
+                    color = Pal.PhosphorDim,
                     fontSize = 9.sp,
                     fontFamily = FontFamily.Monospace
                 )
@@ -193,13 +193,13 @@ fun SpectrogramPane(
             Modifier.fillMaxWidth().padding(start = 34.dp, top = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${minDb.roundToInt()} dB", color = SpectraColors.PhosphorDim, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
-            Text("${maxDb.roundToInt()} dB", color = SpectraColors.PhosphorDim, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+            Text("${minDb.roundToInt()} dB", color = Pal.PhosphorDim, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+            Text("${maxDb.roundToInt()} dB", color = Pal.PhosphorDim, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
         }
 
         val cur = cursor
         val readout = if (cur == null) {
-            "TAP / DRAG THE DISPLAY TO PROBE"
+            lcdCase("Tap / drag the display to probe")
         } else {
             val col = (cur.x * spec.cols).toInt().coerceIn(0, spec.cols - 1)
             val freq = fracToFreq(1.0 - cur.y, nyquist, logScale)
@@ -211,7 +211,7 @@ fun SpectrogramPane(
         Lcd(
             readout,
             Modifier.padding(start = 34.dp, top = 8.dp),
-            color = if (cur == null) SpectraColors.PhosphorDim else SpectraColors.Phosphor,
+            color = if (cur == null) Pal.PhosphorDim else Pal.Phosphor,
             size = 12.sp,
             maxLines = 1
         )
@@ -239,8 +239,8 @@ fun AvgSpectrumPlot(avgDb: FloatArray, nyquist: Double, cutoffHz: Double, sharp:
 
         paint.typeface = Typeface.MONOSPACE
         paint.textSize = 9.sp.toPx()
-        paint.color = SpectraColors.PhosphorDim.toArgb()
-        val grid = SpectraColors.Phosphor.copy(alpha = 0.13f)
+        paint.color = Pal.PhosphorDim.toArgb()
+        val grid = Pal.Phosphor.copy(alpha = 0.13f)
 
         paint.textAlign = android.graphics.Paint.Align.RIGHT
         var g = hi
@@ -279,16 +279,16 @@ fun AvgSpectrumPlot(avgDb: FloatArray, nyquist: Double, cutoffHz: Double, sharp:
         drawPath(
             fill,
             Brush.verticalGradient(
-                listOf(SpectraColors.Phosphor.copy(alpha = 0.35f), Color.Transparent),
+                listOf(Pal.Plot.copy(alpha = 0.35f), Color.Transparent),
                 startY = top,
                 endY = top + ph
             )
         )
-        drawPath(line, SpectraColors.Phosphor, style = Stroke(1.6.dp.toPx(), join = StrokeJoin.Round))
+        drawPath(line, Pal.Plot, style = Stroke(1.6.dp.toPx(), join = StrokeJoin.Round))
 
         if (!sharp) return@Canvas
         val cx = left + pw * (cutoffHz / nyquist).toFloat()
-        val mark = if (sharp) SpectraColors.Amber else SpectraColors.PhosphorDim
+        val mark = if (sharp) Pal.Amber else Pal.PhosphorDim
         drawLine(
             mark,
             Offset(cx, top),

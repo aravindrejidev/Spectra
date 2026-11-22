@@ -12,7 +12,12 @@ import androidx.compose.runtime.setValue
 object AppSettings {
     private var prefs: SharedPreferences? = null
 
+    const val STYLE_MODERN = 0
+    const val STYLE_CLASSIC = 1
+
     // Appearance
+    /** Which look the app uses: [STYLE_MODERN] (default) or [STYLE_CLASSIC], the original rack-unit look. */
+    var uiStyle by mutableIntStateOf(STYLE_MODERN)
     var reduceMotion by mutableStateOf(false)
     var typewriter by mutableStateOf(true)
     var headerShine by mutableStateOf(true)
@@ -53,6 +58,7 @@ object AppSettings {
     fun load(context: Context) {
         val p = context.applicationContext.getSharedPreferences("spectra_settings", Context.MODE_PRIVATE)
         prefs = p
+        uiStyle = p.getInt("ui_style", STYLE_MODERN)
         reduceMotion = p.getBoolean("reduce_motion", false)
         typewriter = p.getBoolean("typewriter", true)
         headerShine = p.getBoolean("header_shine", true)
@@ -76,6 +82,7 @@ object AppSettings {
     fun save() {
         val p = prefs ?: return
         p.edit()
+            .putInt("ui_style", uiStyle)
             .putBoolean("reduce_motion", reduceMotion)
             .putBoolean("typewriter", typewriter)
             .putBoolean("header_shine", headerShine)

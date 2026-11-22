@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aravind.spectra.dsp.AnalysisResult
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
@@ -34,9 +34,9 @@ fun TimelineUnit(a: AnalysisResult) {
     var clippedSeconds = 0
     for (c in a.clipSeconds) if (c > 0) clippedSeconds++
 
-    RackPanel("Loudness over time", lamp = SpectraColors.Phosphor) {
+    RackPanel("Loudness over time", lamp = Pal.Phosphor) {
         if (series.size < 2) {
-            Text("Needs at least 4 seconds of audio for a timeline.", color = SpectraColors.Ink, fontSize = 13.sp)
+            Text("Needs at least 4 seconds of audio for a timeline.", color = Pal.Ink, fontSize = 13.sp)
         } else {
             GlassScreen { LoudnessPlot(a) }
             Spacer(Modifier.height(12.dp))
@@ -51,7 +51,7 @@ fun TimelineUnit(a: AnalysisResult) {
                     Readout(
                         "Seconds with clipping",
                         clippedSeconds.toString(),
-                        if (clippedSeconds > 0) SpectraColors.Amber else SpectraColors.Phosphor
+                        if (clippedSeconds > 0) Pal.Amber else Pal.Phosphor
                     )
                 )
             )
@@ -59,7 +59,7 @@ fun TimelineUnit(a: AnalysisResult) {
             Text(
                 "Short-term loudness (3 s window). The amber line is the integrated loudness. " +
                     "Red ticks below mark seconds that contain clipped samples.",
-                color = SpectraColors.InkSoft,
+                color = Pal.InkSoft,
                 fontSize = 12.sp,
                 lineHeight = 16.sp
             )
@@ -102,9 +102,9 @@ private fun LoudnessPlot(a: AnalysisResult) {
 
         paint.typeface = Typeface.MONOSPACE
         paint.textSize = 9.sp.toPx()
-        paint.color = SpectraColors.PhosphorDim.toArgb()
+        paint.color = Pal.PhosphorDim.toArgb()
         paint.textAlign = Paint.Align.RIGHT
-        val grid = SpectraColors.Phosphor.copy(alpha = 0.13f)
+        val grid = Pal.Phosphor.copy(alpha = 0.13f)
         var g = lo
         while (g <= hiF + 0.01f) {
             val gy = yOf(g)
@@ -130,15 +130,15 @@ private fun LoudnessPlot(a: AnalysisResult) {
                 line.lineTo(px, py)
             }
         }
-        drawPath(line, SpectraColors.Phosphor, style = Stroke(1.6.dp.toPx(), join = StrokeJoin.Round))
+        drawPath(line, Pal.Phosphor, style = Stroke(1.6.dp.toPx(), join = StrokeJoin.Round))
 
         a.lufs?.let { l ->
             val iy = yOf(l.toFloat())
             drawLine(
-                SpectraColors.Amber, Offset(left, iy), Offset(left + pw, iy), 1.5.dp.toPx(),
+                Pal.Amber, Offset(left, iy), Offset(left + pw, iy), 1.5.dp.toPx(),
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))
             )
-            paint.color = SpectraColors.Amber.toArgb()
+            paint.color = Pal.Amber.toArgb()
             paint.textAlign = Paint.Align.LEFT
             drawContext.canvas.nativeCanvas.drawText("I ${f1(l)}", left + 4.dp.toPx(), iy - 3.dp.toPx(), paint)
         }
@@ -150,14 +150,14 @@ private fun LoudnessPlot(a: AnalysisResult) {
             val frac = (log10(1.0 + c) / 4.0).toFloat().coerceIn(0.2f, 1f)
             val bx = xOf(sec + 0.5)
             drawLine(
-                SpectraColors.Red,
+                Pal.Red,
                 Offset(bx, stripTop + stripH),
                 Offset(bx, stripTop + stripH * (1f - frac)),
                 2.dp.toPx()
             )
         }
 
-        paint.color = SpectraColors.PhosphorDim.toArgb()
+        paint.color = Pal.PhosphorDim.toArgb()
         for (i in 0..4) {
             paint.textAlign = when (i) {
                 0 -> Paint.Align.LEFT

@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aravind.spectra.settings.AppSettings
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
 import kotlinx.coroutines.delay
 
 private val TIPS = listOf(
@@ -55,15 +55,15 @@ fun TipsUnit() {
         delay(12_000)
         index = (index + 1) % TIPS.size
     }
-    RackPanel("Did you know?", lamp = SpectraColors.Phosphor) {
+    RackPanel("Did you know?", lamp = Pal.Phosphor) {
         GlassScreen {
             Column(Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 120.dp)) {
                 Text(
                     rememberTyped(TIPS[index], 14L),
-                    color = SpectraColors.Phosphor,
+                    color = Pal.Phosphor,
                     fontSize = 13.sp,
                     lineHeight = 19.sp,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = Pal.Mono
                 )
             }
         }
@@ -83,14 +83,14 @@ fun TipLine() {
     }
     GlassScreen {
         Column(Modifier.fillMaxWidth().padding(14.dp).heightIn(min = 110.dp)) {
-            Lcd("DID YOU KNOW?", color = SpectraColors.PhosphorDim, size = 10.sp)
+            Lcd(lcdCase("Did you know?"), color = Pal.PhosphorDim, size = 10.sp)
             Spacer(Modifier.height(6.dp))
             Text(
                 rememberTyped(TIPS[index], 14L),
-                color = SpectraColors.Phosphor.copy(alpha = 0.9f),
+                color = Pal.Phosphor.copy(alpha = 0.9f),
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
-                fontFamily = FontFamily.Monospace
+                fontFamily = Pal.Mono
             )
         }
     }

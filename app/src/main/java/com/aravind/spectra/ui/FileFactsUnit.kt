@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aravind.spectra.model.UiState
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
 
 /** What the file itself says about how it was made (container, profile, bitrate, encoder, tags). */
 @Composable
@@ -24,7 +24,7 @@ fun FileFactsUnit(s: UiState.Success) {
         if (f == null) {
             Text(
                 "Not available: this file was decoded by the phone's own decoder instead of FFmpeg.",
-                color = SpectraColors.Ink,
+                color = Pal.Ink,
                 fontSize = 13.sp,
                 lineHeight = 18.sp
             )
@@ -63,7 +63,7 @@ fun FileFactsUnit(s: UiState.Success) {
 @Composable
 private fun FactRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Lcd(label.uppercase(), Modifier.weight(0.38f), color = SpectraColors.PhosphorDim, size = 10.sp, maxLines = 2)
+        Lcd(label.uppercase(), Modifier.weight(0.38f), color = Pal.PhosphorDim, size = 10.sp, maxLines = 2)
         Lcd(value, Modifier.weight(0.62f), size = 12.sp, maxLines = 4)
     }
 }

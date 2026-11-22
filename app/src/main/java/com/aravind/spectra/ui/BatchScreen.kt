@@ -27,7 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aravind.spectra.dsp.Severity
 import com.aravind.spectra.engage.Trophies
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
+import com.aravind.spectra.ui.theme.isModernUi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlin.math.min
@@ -44,11 +45,11 @@ fun BatchLauncherUnit(vm: BatchViewModel = viewModel()) {
         if (uris.isNotEmpty()) vm.startFiles(uris)
     }
 
-    RackPanel("Batch scan", lamp = SpectraColors.Blue) {
+    RackPanel("Batch scan", lamp = Pal.Blue) {
         Text(
             "Analyze many tracks in a row: pick a folder (sub-folders included) or select several files. " +
                 "Suspicious files are listed first, and everything can be saved as a CSV.",
-            color = SpectraColors.Ink,
+            color = Pal.Ink,
             fontSize = 13.sp,
             lineHeight = 18.sp
         )
@@ -56,15 +57,26 @@ fun BatchLauncherUnit(vm: BatchViewModel = viewModel()) {
         if (state.running) {
             Text(
                 "A scan is already running. Open it below, or stop it there before starting another.",
-                color = SpectraColors.InkSoft,
+                color = Pal.InkSoft,
                 fontSize = 12.sp,
                 lineHeight = 16.sp
             )
             Spacer(Modifier.height(10.dp))
         }
-        HwButton("SCAN FOLDER", Modifier.fillMaxWidth(), height = 50.dp) { if (!state.running) folder.launch(null) }
-        Spacer(Modifier.height(10.dp))
-        HwButton("PICK FILES", Modifier.fillMaxWidth(), height = 50.dp) { if (!state.running) files.launch(arrayOf("audio/*")) }
+        if (isModernUi) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                HwButton("SCAN FOLDER", Modifier.weight(1f), height = 52.dp, icon = MIconKind.Folder) {
+                    if (!state.running) folder.launch(null)
+                }
+                HwButton("PICK FILES", Modifier.weight(1f), height = 52.dp, icon = MIconKind.File) {
+                    if (!state.running) files.launch(arrayOf("audio/*"))
+                }
+            }
+        } else {
+            HwButton("SCAN FOLDER", Modifier.fillMaxWidth(), height = 50.dp) { if (!state.running) folder.launch(null) }
+            Spacer(Modifier.height(10.dp))
+            HwButton("PICK FILES", Modifier.fillMaxWidth(), height = 50.dp) { if (!state.running) files.launch(arrayOf("audio/*")) }
+        }
         if ((state.items.isNotEmpty() || state.running) && !state.visible) {
             Spacer(Modifier.height(10.dp))
             HwButton("OPEN LAST SCAN (${state.items.size})", Modifier.fillMaxWidth(), height = 44.dp, onClick = vm::show)
@@ -94,21 +106,21 @@ fun BatchScreen(vm: BatchViewModel, onOpen: (Uri) -> Unit) {
     val overall = if (total > 0) (finished + (s.fileProgress ?: 0f)) / total else 0f
     fun countOf(sev: Severity) = s.items.count { it.row?.severity == sev }
 
-    RackPanel("Batch scan", lamp = if (s.running) SpectraColors.Blue else SpectraColors.Green, lampPulse = s.running) {
+    RackPanel("Batch scan", lamp = if (s.running) Pal.Blue else Pal.Green, lampPulse = s.running) {
         GlassScreen {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
                 Lcd(s.label, size = 13.sp, maxLines = 2)
                 Spacer(Modifier.height(8.dp))
                 if (s.running && total > 0) {
-                    Lcd("${min(finished + 1, total)} / $total · ${s.stage}", color = SpectraColors.PhosphorDim, size = 12.sp, maxLines = 2)
+                    Lcd("${min(finished + 1, total)} / $total · ${s.stage}", color = Pal.PhosphorDim, size = 12.sp, maxLines = 2)
                     Spacer(Modifier.height(10.dp))
-                    LedLadder(overall * 100.0, 0.0, 100.0, segments = 30, tint = SpectraColors.Phosphor)
+                    LedLadder(overall * 100.0, 0.0, 100.0, segments = 30, tint = Pal.Plot)
                 } else if (total == 0) {
-                    Lcd(s.stage, color = SpectraColors.PhosphorDim, size = 12.sp)
+                    Lcd(s.stage, color = Pal.PhosphorDim, size = 12.sp)
                 } else {
                     Lcd(
                         "Finished: ${finished - failed} analyzed, $failed failed" + if (waiting > 0) ", $waiting not done" else "",
-                        color = SpectraColors.PhosphorDim,
+                        color = Pal.PhosphorDim,
                         size = 12.sp
                     )
                 }
@@ -118,10 +130,10 @@ fun BatchScreen(vm: BatchViewModel, onOpen: (Uri) -> Unit) {
             Spacer(Modifier.height(10.dp))
             ReadoutGrid(
                 listOf(
-                    Readout("Likely fake", countOf(Severity.BAD).toString(), SpectraColors.Red),
-                    Readout("Suspicious", countOf(Severity.WARN).toString(), SpectraColors.Amber),
-                    Readout("Inconclusive", countOf(Severity.INFO).toString(), SpectraColors.Blue),
-                    Readout("No lossy sign", countOf(Severity.GOOD).toString(), SpectraColors.Green)
+                    Readout("Likely fake", countOf(Severity.BAD).toString(), Pal.Red),
+                    Readout("Suspicious", countOf(Severity.WARN).toString(), Pal.Amber),
+                    Readout("Inconclusive", countOf(Severity.INFO).toString(), Pal.Blue),
+                    Readout("No lossy sign", countOf(Severity.GOOD).toString(), Pal.Green)
                 )
             )
         }
@@ -176,7 +188,7 @@ fun BatchScreen(vm: BatchViewModel, onOpen: (Uri) -> Unit) {
         RackPanel("Results") {
             Text(
                 if (s.running) "Tap a file for its full report once the scan is done." else "Tap a file for its full report.",
-                color = SpectraColors.InkSoft,
+                color = Pal.InkSoft,
                 fontSize = 12.sp
             )
             Spacer(Modifier.height(6.dp))
@@ -191,7 +203,7 @@ fun BatchScreen(vm: BatchViewModel, onOpen: (Uri) -> Unit) {
 private fun BatchRowView(item: BatchItem, enabled: Boolean, onClick: () -> Unit) {
     val r = item.row
     val tone = when {
-        r == null -> SpectraColors.Red
+        r == null -> Pal.Red
         else -> sevColor(r.severity)
     }
     Row(
@@ -205,7 +217,7 @@ private fun BatchRowView(item: BatchItem, enabled: Boolean, onClick: () -> Unit)
             if (r != null) {
                 Text(
                     r.headline + (r.evidence?.let { " · evidence $it%" } ?: "") + (r.estimatedSource?.let { " · $it" } ?: ""),
-                    color = SpectraColors.Ink,
+                    color = Pal.Ink,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -214,12 +226,12 @@ private fun BatchRowView(item: BatchItem, enabled: Boolean, onClick: () -> Unit)
                     "${r.codec} · ${fmtHz(r.sampleRate.toDouble())} · ${r.channels} ch$depth · ${fmtLufs(r.lufs)} · " +
                         "DR ${r.dr?.roundToInt() ?: "—"} · " +
                         (if (r.hasEdge) "edge ${fmtHz(r.cutoffHz)}" else "no edge"),
-                    color = SpectraColors.InkSoft,
+                    color = Pal.InkSoft,
                     fontSize = 11.sp,
                     lineHeight = 15.sp
                 )
             } else {
-                Text(item.error ?: "Failed", color = SpectraColors.Red, fontSize = 12.sp)
+                Text(item.error ?: "Failed", color = Pal.Red, fontSize = 12.sp)
             }
         }
     }

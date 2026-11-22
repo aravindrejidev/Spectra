@@ -41,11 +41,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aravind.spectra.settings.AppSettings
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
+import com.aravind.spectra.ui.theme.isModernUi
 
 /** Round metal back button with a chevron. */
 @Composable
 fun BackButton(onClick: () -> Unit) {
+    if (isModernUi) {
+        ModernIconButton(MIconKind.Back, onClick)
+        return
+    }
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(dampingRatio = 0.55f, stiffness = 500f), label = "back")
@@ -71,13 +76,17 @@ fun BackButton(onClick: () -> Unit) {
             lineTo(c.x - r * 0.2f, c.y)
             lineTo(c.x + r * 0.12f, c.y + r * 0.34f)
         }
-        drawPath(chevron, SpectraColors.Ink, style = Stroke(r * 0.16f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(chevron, Pal.Ink, style = Stroke(r * 0.16f, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }
 
 /** Round metal gear button that opens Settings. */
 @Composable
 fun GearButton(onClick: () -> Unit) {
+    if (isModernUi) {
+        ModernIconButton(MIconKind.Gear, onClick, spin = 90f)
+        return
+    }
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(dampingRatio = 0.55f, stiffness = 500f), label = "gear")
@@ -123,22 +132,23 @@ internal fun PageHeader(title: String, onBack: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Text(
             title,
-            color = SpectraColors.MetalHi,
+            if (isModernUi) Modifier.popIn(dy = 14.dp) else Modifier,
+            color = Pal.Title,
             fontSize = 34.sp,
             fontWeight = FontWeight.Bold,
-            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = 0.7f), Offset(0f, 3f), 8f))
+            style = if (isModernUi) TextStyle.Default else TextStyle(shadow = Shadow(Color.Black.copy(alpha = 0.7f), Offset(0f, 3f), 8f))
         )
     }
 }
 
 @Composable
 internal fun RowTitle(text: String) {
-    Text(text, color = SpectraColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+    Text(text, color = Pal.Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
 }
 
 @Composable
 internal fun RowSub(text: String) {
-    Text(text, color = SpectraColors.InkSoft, fontSize = 12.sp, lineHeight = 16.sp)
+    Text(text, color = Pal.InkSoft, fontSize = 12.sp, lineHeight = 16.sp)
 }
 
 @Composable
@@ -149,13 +159,17 @@ internal fun Chevron() {
             lineTo(size.width - 1.dp.toPx(), size.height / 2f)
             lineTo(1.dp.toPx(), size.height - 1.dp.toPx())
         }
-        drawPath(p, SpectraColors.InkSoft, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(p, Pal.InkSoft, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }
 
 /** An engraved groove between rows. */
 @Composable
 internal fun RowDivider() {
+    if (isModernUi) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
+        return
+    }
     Column(Modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Color.Black.copy(alpha = 0.14f)))
         Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.7f)))
@@ -165,6 +179,10 @@ internal fun RowDivider() {
 /** Toggle switch: metal knob sliding in a groove that lights up when on. */
 @Composable
 fun HwSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
+    if (isModernUi) {
+        ModernSwitch(checked, onChange)
+        return
+    }
     val x by animateFloatAsState(if (checked) 1f else 0f, spring(dampingRatio = 0.6f, stiffness = 500f), label = "switch")
     val haptic = LocalHapticFeedback.current
     Canvas(
@@ -183,7 +201,7 @@ fun HwSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
         )
         if (x > 0f) {
             drawRoundRect(
-                SpectraColors.Green.copy(alpha = (0.55f * x).coerceIn(0f, 1f)),
+                Pal.Green.copy(alpha = (0.55f * x).coerceIn(0f, 1f)),
                 Offset(3.dp.toPx(), 3.dp.toPx()),
                 Size(w - 6.dp.toPx(), h - 6.dp.toPx()),
                 CornerRadius(h / 2f)
@@ -269,6 +287,6 @@ fun ActionRow(title: String, subtitle: String?, button: String, onClick: () -> U
 fun InfoRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.weight(0.4f)) { RowTitle(label) }
-        Box(Modifier.weight(0.6f)) { Text(value, color = SpectraColors.InkSoft, fontSize = 13.sp, lineHeight = 17.sp) }
+        Box(Modifier.weight(0.6f)) { Text(value, color = Pal.InkSoft, fontSize = 13.sp, lineHeight = 17.sp) }
     }
 }

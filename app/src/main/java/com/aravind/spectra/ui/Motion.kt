@@ -34,7 +34,9 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aravind.spectra.settings.AppSettings
+import com.aravind.spectra.ui.theme.Pal
 import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.isModernUi
 import kotlin.math.abs
 import kotlinx.coroutines.delay
 
@@ -80,7 +82,7 @@ fun Modifier.revealWipe(durationMs: Int = 900, key: Any? = null): Modifier {
         if (reveal < 1f) {
             val x = size.width * reveal
             drawLine(
-                SpectraColors.Phosphor.copy(alpha = 0.85f),
+                Pal.Plot.copy(alpha = 0.85f),
                 Offset(x, 0f), Offset(x, size.height),
                 2.dp.toPx()
             )
@@ -91,6 +93,10 @@ fun Modifier.revealWipe(durationMs: Int = 900, key: Any? = null): Modifier {
 /** A lamp whose glow breathes; used while something is running. */
 @Composable
 fun PulsingLed(color: Color, diameter: Dp = 10.dp, modifier: Modifier = Modifier) {
+    if (isModernUi) {
+        ModernPulseDot(color, diameter, modifier)
+        return
+    }
     val t = rememberInfiniteTransition(label = "pulse")
     val glow by t.animateFloat(
         0.25f, 1f,
@@ -117,6 +123,10 @@ fun PulsingLed(color: Color, diameter: Dp = 10.dp, modifier: Modifier = Modifier
 /** LED bar with a light sweeping back and forth: "working, no percentage known". */
 @Composable
 fun ScanBar(segments: Int = 30, modifier: Modifier = Modifier) {
+    if (isModernUi) {
+        ModernScanBar(modifier)
+        return
+    }
     val t = rememberInfiniteTransition(label = "scan")
     val pos by t.animateFloat(
         0f, 1f,

@@ -37,7 +37,9 @@ import com.aravind.spectra.dsp.Severity
 import com.aravind.spectra.dsp.Verdict
 import com.aravind.spectra.dsp.VerdictEngine
 import com.aravind.spectra.model.UiState
+import com.aravind.spectra.ui.theme.Pal
 import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.isModernUi
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -54,6 +56,14 @@ internal fun channelLabel(count: Int, index: Int): String {
 }
 
 fun sevColor(s: Severity): Color = when (s) {
+    Severity.GOOD -> Pal.Green
+    Severity.INFO -> Pal.Blue
+    Severity.WARN -> Pal.Amber
+    Severity.BAD -> Pal.Red
+}
+
+/** Severity colours for exported reports: always the classic palette, whatever look the app uses. */
+fun classicSevColor(s: Severity): Color = when (s) {
     Severity.GOOD -> SpectraColors.Green
     Severity.INFO -> SpectraColors.Blue
     Severity.WARN -> SpectraColors.Amber
@@ -78,7 +88,7 @@ fun sevColor(s: Severity): Color = when (s) {
 
 @Composable
 fun SourceUnit(s: UiState.Success, onNew: () -> Unit, onShare: () -> Unit) {
-    RackPanel("Source", lamp = SpectraColors.Green) {
+    RackPanel("Source", lamp = Pal.Green) {
         GlassScreen {
             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 val bytes = s.tags.coverArt
@@ -88,7 +98,7 @@ fun SourceUnit(s: UiState.Success, onNew: () -> Unit, onShare: () -> Unit) {
                         Modifier
                             .size(76.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Brush.verticalGradient(listOf(SpectraColors.MetalEdgeDark, SpectraColors.MetalLo)))
+                            .background(Brush.verticalGradient(listOf(Pal.FrameDark, Pal.FrameLight)))
                             .padding(3.dp)
                     ) {
                         Image(
@@ -102,12 +112,12 @@ fun SourceUnit(s: UiState.Success, onNew: () -> Unit, onShare: () -> Unit) {
                 }
                 Column(Modifier.weight(1f)) {
                     Lcd(s.tags.title ?: s.fileName, size = 16.sp, weight = FontWeight.Bold, maxLines = 2)
-                    s.tags.artist?.let { Lcd(it, color = SpectraColors.Amber, size = 13.sp, maxLines = 2) }
-                    s.tags.album?.let { Lcd(it, color = SpectraColors.PhosphorDim, size = 12.sp, maxLines = 2) }
+                    s.tags.artist?.let { Lcd(it, color = Pal.Amber, size = 13.sp, maxLines = 2) }
+                    s.tags.album?.let { Lcd(it, color = Pal.PhosphorDim, size = 12.sp, maxLines = 2) }
                     Spacer(Modifier.height(4.dp))
                     Lcd(
                         "${codecName(s.info.codecMime)} · ${fmtBytes(s.fileSizeBytes)}",
-                        color = SpectraColors.PhosphorDim,
+                        color = Pal.PhosphorDim,
                         size = 11.sp,
                         maxLines = 2
                     )
@@ -126,8 +136,8 @@ fun SourceUnit(s: UiState.Success, onNew: () -> Unit, onShare: () -> Unit) {
         }
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HwButton("EJECT", Modifier.weight(1f), onClick = onNew)
-            HwButton("SHARE", Modifier.weight(1f), onClick = onShare)
+            HwButton("EJECT", Modifier.weight(1f), icon = MIconKind.Eject, onClick = onNew)
+            HwButton("SHARE", Modifier.weight(1f), icon = MIconKind.Share, onClick = onShare)
         }
     }
 }
@@ -138,11 +148,17 @@ fun VerdictUnit(v: Verdict) {
     RackPanel("Authenticity", lamp = tone) {
         GlassScreen {
             Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                if (isModernUi) {
+                    StatusChip(v.severity)
+                    Spacer(Modifier.height(12.dp))
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Led(tone, true, 22.dp)
-                    Spacer(Modifier.width(14.dp))
+                    if (!isModernUi) {
+                        Led(tone, true, 22.dp)
+                        Spacer(Modifier.width(14.dp))
+                    }
                     Lcd(
-                        rememberTyped(v.headline.uppercase()),
+                        rememberTyped(if (isModernUi) v.headline else v.headline.uppercase()),
                         Modifier.weight(1f),
                         color = tone,
                         size = 18.sp,
@@ -152,20 +168,20 @@ fun VerdictUnit(v: Verdict) {
                 Spacer(Modifier.height(10.dp))
                 Text(
                     v.summary,
-                    color = SpectraColors.Phosphor.copy(alpha = 0.85f),
+                    color = Pal.Phosphor.copy(alpha = 0.85f),
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = Pal.Mono
                 )
                 v.confidence?.let { c ->
                     Spacer(Modifier.height(12.dp))
-                    Lcd("EVIDENCE $c%", color = tone, size = 11.sp)
+                    Lcd(if (isModernUi) "Evidence $c%" else "EVIDENCE $c%", color = tone, size = 11.sp)
                     Spacer(Modifier.height(4.dp))
                     LedLadder(c.toDouble(), 0.0, 100.0, segments = 20, tint = tone)
                 }
                 v.estimatedSource?.let {
                     Spacer(Modifier.height(10.dp))
-                    Lcd("SOURCE: $it", color = SpectraColors.Amber, size = 12.sp)
+                    Lcd(if (isModernUi) "Source: $it" else "SOURCE: $it", color = Pal.Amber, size = 12.sp)
                 }
             }
         }
@@ -176,7 +192,7 @@ fun VerdictUnit(v: Verdict) {
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Engraved(f.label.uppercase(), size = 11.sp, spacing = 1.5.sp)
-                    Text(f.text, color = SpectraColors.Ink, fontSize = 13.sp, lineHeight = 17.sp)
+                    Text(f.text, color = Pal.Ink, fontSize = 13.sp, lineHeight = 17.sp)
                 }
             }
         }
@@ -193,7 +209,7 @@ fun SpectrogramUnit(
     minDb: Float,
     onMinDb: (Float) -> Unit
 ) {
-    RackPanel("Spectrogram", lamp = SpectraColors.Phosphor) {
+    RackPanel("Spectrogram", lamp = Pal.Phosphor) {
         val names = listOf(
             "all" to (if (a.channelCount == 1) "MONO" else "L+R"),
             "ch1" to channelLabel(a.channelCount, 0),
@@ -207,7 +223,7 @@ fun SpectrogramUnit(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             names.forEach { (key, label) ->
-                HwButton(label, if (names.size > 5) Modifier.width(64.dp) else Modifier.weight(1f), active = view == key, led = SpectraColors.Phosphor, height = 54.dp, compact = true) {
+                HwButton(label, if (names.size > 5) Modifier.width(64.dp) else Modifier.weight(1f), active = view == key, led = Pal.Plot, height = 54.dp, compact = true) {
                     onView(key)
                 }
             }
@@ -231,14 +247,14 @@ fun SpectrogramUnit(
 
 @Composable
 fun SpectrumUnit(a: AnalysisResult) {
-    RackPanel("Average Spectrum", lamp = SpectraColors.Phosphor) {
+    RackPanel("Average Spectrum", lamp = Pal.Phosphor) {
         GlassScreen {
             AvgSpectrumPlot(a.avgSpectrumDb, a.sampleRate / 2.0, a.cutoff.cutoffHz, a.cutoff.isSharp)
         }
         Spacer(Modifier.height(8.dp))
         Text(
             "The amber line marks a brick-wall drop when one was found. Well below Nyquist it is a classic fingerprint of a lossy encode. No line means the spectrum fades smoothly.",
-            color = SpectraColors.InkSoft,
+            color = Pal.InkSoft,
             fontSize = 12.sp,
             lineHeight = 16.sp
         )
@@ -248,7 +264,7 @@ fun SpectrumUnit(a: AnalysisResult) {
 @Composable
 fun LevelsUnit(a: AnalysisResult) {
     val over = a.truePeakDb > 0.0
-    RackPanel("Loudness & Levels", lamp = if (over) SpectraColors.Red else SpectraColors.Green) {
+    RackPanel("Loudness & Levels", lamp = if (over) Pal.Red else Pal.Green) {
         VuMeter(a.lufs?.toFloat(), -36f, 0f, -10f, "LUFS")
         Spacer(Modifier.height(12.dp))
         GlassScreen {
@@ -258,7 +274,7 @@ fun LevelsUnit(a: AnalysisResult) {
                     Column {
                         Lcd(
                             "$name  PK ${f1(ch.peakDb)}  TP ${f1(ch.truePeakDb)}",
-                            color = if (ch.truePeakDb > 0.0) SpectraColors.Red else SpectraColors.Phosphor,
+                            color = if (ch.truePeakDb > 0.0) Pal.Red else Pal.Phosphor,
                             size = 11.sp,
                             maxLines = 1
                         )
@@ -270,9 +286,9 @@ fun LevelsUnit(a: AnalysisResult) {
         }
         Spacer(Modifier.height(12.dp))
         val drTone = when {
-            a.dr == null -> SpectraColors.Phosphor
-            a.dr <= 7.0 -> SpectraColors.Amber
-            else -> SpectraColors.Phosphor
+            a.dr == null -> Pal.Phosphor
+            a.dr <= 7.0 -> Pal.Amber
+            else -> Pal.Phosphor
         }
         val items = mutableListOf(
             Readout("Integrated", fmtLufs(a.lufs)),
@@ -280,7 +296,7 @@ fun LevelsUnit(a: AnalysisResult) {
             Readout("Max momentary", fmtLufs(a.maxMomentary)),
             Readout("Dynamic range", a.dr?.let { "DR${it.roundToInt()}" } ?: "—", drTone),
             Readout("Sample peak", fmtDb(a.peakDb)),
-            Readout("True peak", fmtDb(a.truePeakDb), if (over) SpectraColors.Red else SpectraColors.Phosphor),
+            Readout("True peak", fmtDb(a.truePeakDb), if (over) Pal.Red else Pal.Phosphor),
             Readout("RMS", fmtDb(a.rmsDb)),
             Readout(
                 "Clipping",
@@ -289,11 +305,11 @@ fun LevelsUnit(a: AnalysisResult) {
                     a.clipSamples > 0 -> "${a.clipSamples} touches"
                     else -> "none"
                 },
-                if (a.clipRuns > 0) SpectraColors.Amber else SpectraColors.Phosphor
+                if (a.clipRuns > 0) Pal.Amber else Pal.Phosphor
             )
         )
         a.stereo?.let { st ->
-            items.add(Readout("Correlation", f2(st.correlation), if (st.correlation < 0.0) SpectraColors.Amber else SpectraColors.Phosphor))
+            items.add(Readout("Correlation", f2(st.correlation), if (st.correlation < 0.0) Pal.Amber else Pal.Phosphor))
             items.add(Readout("Side vs mid", if (st.dualMono) "mono" else "${f1(st.sideDb - st.midDb)} dB"))
             items.add(Readout("Balance L/R", "${f1(st.balanceDb)} dB"))
         }
@@ -307,7 +323,7 @@ fun DetailsUnit(s: UiState.Success) {
     val lossless = VerdictEngine.isLossless(s.info.codecMime)
     RackPanel("Technical Data") {
         s.info.note?.let {
-            Text("FFmpeg not used: $it", color = SpectraColors.Ink, fontSize = 12.sp, lineHeight = 16.sp)
+            Text("FFmpeg not used: $it", color = Pal.Ink, fontSize = 12.sp, lineHeight = 16.sp)
             Spacer(Modifier.height(8.dp))
         }
         ReadoutGrid(

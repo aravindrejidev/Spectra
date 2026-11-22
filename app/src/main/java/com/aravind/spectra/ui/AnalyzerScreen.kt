@@ -11,6 +11,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
@@ -48,7 +49,8 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aravind.spectra.model.UiState
 import com.aravind.spectra.settings.AppSettings
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
+import com.aravind.spectra.ui.theme.isModernUi
 import com.aravind.spectra.update.UpdateChecker
 import kotlin.math.PI
 import kotlin.math.roundToInt
@@ -107,7 +109,14 @@ fun AnalyzerScreen(
                 targetState = ScreenState(showSettings, batch.visible, state),
                 // progress updates inside one screen must not trigger a transition
                 contentKey = { if (it.settings) "settings" else if (it.batch) "batch" else it.ui::class.java.name },
-                transitionSpec = { fadeIn(tween(320, delayMillis = 90)) togetherWith fadeOut(tween(140)) },
+                transitionSpec = {
+                    if (isModernUi) {
+                        (fadeIn(tween(340, delayMillis = 90)) + slideInVertically(tween(340, delayMillis = 90)) { 56 }) togetherWith
+                            fadeOut(tween(140))
+                    } else {
+                        fadeIn(tween(320, delayMillis = 90)) togetherWith fadeOut(tween(140))
+                    }
+                },
                 label = "screen"
             ) { screen ->
                 Column(Modifier.fillMaxWidth()) {
@@ -152,17 +161,21 @@ fun AnalyzerScreen(
 private fun HeaderUnit(state: UiState, onSettings: () -> Unit) {
     val context = LocalContext.current
     val version = remember { UpdateChecker.currentVersion(context) }
+    if (isModernUi) {
+        ModernHeaderUnit(state, version, onSettings)
+        return
+    }
     val lamp = when (state) {
-        is UiState.Idle -> SpectraColors.Amber
-        is UiState.Loading -> SpectraColors.Blue
-        is UiState.Error -> SpectraColors.Red
-        is UiState.Success -> SpectraColors.Green
+        is UiState.Idle -> Pal.Amber
+        is UiState.Loading -> Pal.Blue
+        is UiState.Error -> Pal.Red
+        is UiState.Success -> Pal.Green
     }
     RackPanel("Spectra SA-1", lamp = lamp, lampPulse = state is UiState.Loading, shine = true) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Engraved(
                 "SPECTRA", Modifier.weight(1f),
-                size = 34.sp, color = SpectraColors.Ink, spacing = 4.sp, weight = FontWeight.Black
+                size = 34.sp, color = Pal.Ink, spacing = 4.sp, weight = FontWeight.Black
             )
             GearButton(onSettings)
         }
@@ -193,7 +206,7 @@ private fun IdleDisplay(modifier: Modifier = Modifier) {
                 val h = size.height * (0.10f + 0.17f * a + 0.09f * b)
                 drawRoundRect(
                     Brush.verticalGradient(
-                        listOf(SpectraColors.Phosphor, SpectraColors.PhosphorDim),
+                        listOf(Pal.Phosphor, Pal.PhosphorDim),
                         startY = size.height - h,
                         endY = size.height
                     ),
@@ -206,7 +219,7 @@ private fun IdleDisplay(modifier: Modifier = Modifier) {
         Lcd(
             "NO SIGNAL",
             Modifier.align(Alignment.TopStart).padding(10.dp),
-            color = SpectraColors.PhosphorDim,
+            color = Pal.PhosphorDim,
             size = 11.sp
         )
     }
@@ -214,12 +227,16 @@ private fun IdleDisplay(modifier: Modifier = Modifier) {
 
 @Composable
 private fun IdleUnits(onLoad: () -> Unit) {
-    RackPanel("Input", lamp = SpectraColors.Amber) {
-        GlassScreen { IdleDisplay(Modifier.fillMaxWidth().height(130.dp)) }
-        Spacer(Modifier.height(16.dp))
-        HwButton("LOAD TRACK", Modifier.fillMaxWidth(), height = 54.dp, onClick = onLoad)
-        Spacer(Modifier.height(12.dp))
-        Engraved("FLAC · WAV · MP3 · AAC · OGG · OPUS", size = 11.sp, spacing = 1.5.sp)
+    if (isModernUi) {
+        ModernInputCard(onLoad)
+    } else {
+        RackPanel("Input", lamp = Pal.Amber) {
+            GlassScreen { IdleDisplay(Modifier.fillMaxWidth().height(130.dp)) }
+            Spacer(Modifier.height(16.dp))
+            HwButton("LOAD TRACK", Modifier.fillMaxWidth(), height = 54.dp, onClick = onLoad)
+            Spacer(Modifier.height(12.dp))
+            Engraved("FLAC · WAV · MP3 · AAC · OGG · OPUS", size = 11.sp, spacing = 1.5.sp)
+        }
     }
 
     BatchLauncherUnit()
@@ -229,21 +246,26 @@ private fun IdleUnits(onLoad: () -> Unit) {
     if (AppSettings.showTips) TipsUnit()
     if (AppSettings.showSelfTest) SelfTestUnit()
 
-    RackPanel("Checks") {
-        listOf(
-            "Fake-lossless & upsample detection",
-            "Inflated-bitrate and encoder-tag evidence",
-            "Loudness: LUFS, LRA, true peak, over time",
-            "Dynamic range (DR) & clipping timeline",
-            "Spectrogram with LIN / LOG, MID / SIDE",
-            "Stereo field & effective bit depth",
-            "Batch scan, PDF and CSV export",
-            "100% on-device analysis (network: update check only)"
-        ).forEach {
-            Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                Led(SpectraColors.Green, true, 9.dp)
-                Spacer(Modifier.width(12.dp))
-                Engraved(it, size = 13.sp, spacing = 0.3.sp, weight = FontWeight.SemiBold)
+    val checks = listOf(
+        "Fake-lossless & upsample detection",
+        "Inflated-bitrate and encoder-tag evidence",
+        "Loudness: LUFS, LRA, true peak, over time",
+        "Dynamic range (DR) & clipping timeline",
+        "Spectrogram with LIN / LOG, MID / SIDE",
+        "Stereo field & effective bit depth",
+        "Batch scan, PDF and CSV export",
+        "100% on-device analysis (network: update check only)"
+    )
+    if (isModernUi) {
+        ModernChecksCard(checks)
+    } else {
+        RackPanel("Checks") {
+            checks.forEach {
+                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Led(Pal.Green, true, 9.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Engraved(it, size = 13.sp, spacing = 0.3.sp, weight = FontWeight.SemiBold)
+                }
             }
         }
     }
@@ -251,8 +273,12 @@ private fun IdleUnits(onLoad: () -> Unit) {
 
 @Composable
 private fun LoadingUnit(s: UiState.Loading, onAbort: () -> Unit) {
+    if (isModernUi) {
+        ModernLoadingUnit(s, onAbort)
+        return
+    }
     val p = s.progress
-    RackPanel("Analyzing", lamp = SpectraColors.Blue, lampPulse = true) {
+    RackPanel("Analyzing", lamp = Pal.Blue, lampPulse = true) {
         GlassScreen {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
                 Lcd(rememberTyped(s.step.uppercase()), size = 14.sp)
@@ -260,12 +286,12 @@ private fun LoadingUnit(s: UiState.Loading, onAbort: () -> Unit) {
                 if (p == null) {
                     ScanBar()
                 } else {
-                    LedLadder((p * 100f).toDouble(), 0.0, 100.0, segments = 30, tint = SpectraColors.Phosphor)
+                    LedLadder((p * 100f).toDouble(), 0.0, 100.0, segments = 30, tint = Pal.Phosphor)
                 }
                 Spacer(Modifier.height(8.dp))
                 Lcd(
                     if (p == null) "WORKING…" else "${(p * 100f).roundToInt()} %",
-                    color = SpectraColors.PhosphorDim,
+                    color = Pal.PhosphorDim,
                     size = 12.sp
                 )
             }
@@ -279,12 +305,16 @@ private fun LoadingUnit(s: UiState.Loading, onAbort: () -> Unit) {
 
 @Composable
 private fun ErrorUnit(message: String, onRetry: () -> Unit) {
-    RackPanel("Fault", lamp = SpectraColors.Red) {
+    if (isModernUi) {
+        ModernErrorUnit(message, onRetry)
+        return
+    }
+    RackPanel("Fault", lamp = Pal.Red) {
         GlassScreen {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                Lcd("COULD NOT ANALYZE THIS FILE", color = SpectraColors.Red, size = 13.sp, weight = FontWeight.Bold)
+                Lcd("COULD NOT ANALYZE THIS FILE", color = Pal.Red, size = 13.sp, weight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
-                Lcd(message, color = SpectraColors.Amber, size = 12.sp)
+                Lcd(message, color = Pal.Amber, size = 12.sp)
             }
         }
         Spacer(Modifier.height(14.dp))

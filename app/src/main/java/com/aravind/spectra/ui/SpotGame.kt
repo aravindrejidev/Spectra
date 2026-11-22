@@ -31,7 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aravind.spectra.dsp.StreamAnalyzer
 import com.aravind.spectra.dsp.VerdictEngine
 import com.aravind.spectra.engage.Trophies
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -311,15 +311,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 }
 
 private fun rankOf(correct: Int): String = when {
-    correct >= 9 -> "GOLDEN EARS"
-    correct >= 7 -> "SHARP DETECTIVE"
-    correct >= 5 -> "APPRENTICE"
-    else -> "ROOKIE"
+    correct >= 9 -> "Golden ears"
+    correct >= 7 -> "Sharp detective"
+    correct >= 5 -> "Apprentice"
+    else -> "Rookie"
 }
 
 @Composable
 private fun GameHeader(round: Int, total: Int, score: Int, streak: Int) {
-    Lcd("ROUND $round/$total · SCORE $score · STREAK $streak", color = SpectraColors.PhosphorDim, size = 12.sp)
+    Lcd(lcdCase("Round $round/$total · Score $score · Streak $streak"), color = Pal.PhosphorDim, size = 12.sp)
     Spacer(Modifier.height(10.dp))
 }
 
@@ -333,7 +333,7 @@ private fun GameSpectrogram(puzzle: GameRound, animate: Boolean) {
                 horizontalAlignment = Alignment.End
             ) {
                 for (label in listOf("22k", "16.5k", "11k", "5.5k", "0")) {
-                    Text(label, color = SpectraColors.PhosphorDim, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+                    Text(label, color = Pal.PhosphorDim, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
                 }
             }
             Spacer(Modifier.width(6.dp))
@@ -355,19 +355,19 @@ fun SpotGameUnit(vm: GameViewModel = viewModel()) {
     val state by vm.state.collectAsState()
     val s = state
 
-    RackPanel("Spot the fake", lamp = SpectraColors.Amber, lampPulse = s is GameState.Building) {
+    RackPanel("Spot the fake", lamp = Pal.Amber, lampPulse = s is GameState.Building) {
         when (s) {
             is GameState.Idle -> {
                 Text(
                     "Ten spectrograms, one question each: is there a brick wall (a lossy encode), or does the " +
                         "spectrum fade away naturally? Build a streak for bonus points.",
-                    color = SpectraColors.Ink,
+                    color = Pal.Ink,
                     fontSize = 13.sp,
                     lineHeight = 18.sp
                 )
                 if (vm.best > 0) {
                     Spacer(Modifier.height(8.dp))
-                    Engraved("BEST SCORE  ${vm.best}", size = 11.sp, spacing = 1.5.sp)
+                    Engraved(lcdCase("Best score  ${vm.best}"), size = 11.sp, spacing = 1.5.sp)
                 }
                 Spacer(Modifier.height(12.dp))
                 HwButton("START", Modifier.fillMaxWidth(), height = 50.dp, onClick = vm::start)
@@ -375,11 +375,11 @@ fun SpotGameUnit(vm: GameViewModel = viewModel()) {
             is GameState.Building -> {
                 GlassScreen {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                        Lcd(rememberTyped("BUILDING ROUND ${s.round} / ${s.total}"), size = 14.sp)
+                        Lcd(rememberTyped(lcdCase("Building round ${s.round} / ${s.total}")), size = 14.sp)
                         Spacer(Modifier.height(12.dp))
                         ScanBar()
                         Spacer(Modifier.height(8.dp))
-                        Lcd("Making a fresh spectrogram on your phone…", color = SpectraColors.PhosphorDim, size = 12.sp)
+                        Lcd("Making a fresh spectrogram on your phone…", color = Pal.PhosphorDim, size = 12.sp)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -400,8 +400,8 @@ fun SpotGameUnit(vm: GameViewModel = viewModel()) {
                 GlassScreen {
                     Column(Modifier.fillMaxWidth().padding(14.dp)) {
                         Lcd(
-                            if (s.correct) "CORRECT  +${s.gained}" else "NOT QUITE",
-                            color = if (s.correct) SpectraColors.Green else SpectraColors.Red,
+                            if (s.correct) lcdCase("Correct  +${s.gained}") else lcdCase("Not quite"),
+                            color = if (s.correct) Pal.Green else Pal.Red,
                             size = 16.sp,
                             weight = FontWeight.Bold
                         )
@@ -415,7 +415,7 @@ fun SpotGameUnit(vm: GameViewModel = viewModel()) {
                             size = 13.sp
                         )
                         Spacer(Modifier.height(6.dp))
-                        Lcd(s.puzzle.measured, color = SpectraColors.PhosphorDim, size = 12.sp)
+                        Lcd(s.puzzle.measured, color = Pal.PhosphorDim, size = 12.sp)
                         Spacer(Modifier.height(8.dp))
                         Text(
                             if (s.puzzle.cliff) {
@@ -426,10 +426,10 @@ fun SpotGameUnit(vm: GameViewModel = viewModel()) {
                                 "Real recordings fade away gradually. A fade, not a wall, is what a genuine " +
                                     "full-bandwidth file looks like."
                             },
-                            color = SpectraColors.Phosphor.copy(alpha = 0.9f),
+                            color = Pal.Phosphor.copy(alpha = 0.9f),
                             fontSize = 12.sp,
                             lineHeight = 17.sp,
-                            fontFamily = FontFamily.Monospace
+                            fontFamily = Pal.Mono
                         )
                     }
                 }
@@ -439,11 +439,11 @@ fun SpotGameUnit(vm: GameViewModel = viewModel()) {
             is GameState.Done -> {
                 GlassScreen {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                        Lcd(rankOf(s.correct), color = SpectraColors.Amber, size = 18.sp, weight = FontWeight.Bold)
+                        Lcd(lcdCase(rankOf(s.correct)), color = Pal.Amber, size = 18.sp, weight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         Lcd("${s.correct} / ${s.total} right · score ${s.score}", size = 13.sp)
                         Spacer(Modifier.height(4.dp))
-                        Lcd("Best score ${s.best}", color = SpectraColors.PhosphorDim, size = 12.sp)
+                        Lcd("Best score ${s.best}", color = Pal.PhosphorDim, size = 12.sp)
                     }
                 }
                 Spacer(Modifier.height(12.dp))

@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.aravind.spectra.engage.Tier
 import com.aravind.spectra.engage.Trophies
 import com.aravind.spectra.engage.Trophy
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
 import kotlinx.coroutines.delay
 import java.util.Locale
 import kotlin.math.cos
@@ -109,7 +109,7 @@ private fun Medal(t: Trophy, unlocked: Boolean, selected: Boolean, onClick: () -
             maxLines = 2,
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.SemiBold,
-            color = if (unlocked) SpectraColors.Ink else SpectraColors.InkSoft.copy(alpha = 0.6f)
+            color = if (unlocked) Pal.Ink else Pal.InkSoft.copy(alpha = 0.6f)
         )
     }
 }
@@ -123,13 +123,13 @@ fun TrophyShelfUnit() {
     val stats by Trophies.stats.collectAsState()
     var selected by remember { mutableStateOf<String?>(null) }
 
-    RackPanel("Trophies", lamp = if (unlocked.isEmpty()) SpectraColors.Amber else SpectraColors.Green) {
-        Engraved("${unlocked.size} OF ${Trophies.all.size} UNLOCKED", size = 11.sp, spacing = 1.5.sp)
+    RackPanel("Trophies", lamp = if (unlocked.isEmpty()) Pal.Amber else Pal.Green) {
+        Engraved(lcdCase("${unlocked.size} of ${Trophies.all.size} unlocked"), size = 11.sp, spacing = 1.5.sp)
         Spacer(Modifier.height(10.dp))
-        for (row in Trophies.all.chunked(4)) {
+        for ((ri, row) in Trophies.all.chunked(4).withIndex()) {
             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                for (t in row) {
-                    Column(Modifier.weight(1f)) {
+                for ((ci, t) in row.withIndex()) {
+                    Column(Modifier.weight(1f).modernPopIn(ri * 4 + ci)) {
                         Medal(t, t.id in unlocked, selected == t.id) {
                             selected = if (selected == t.id) null else t.id
                         }
@@ -145,17 +145,17 @@ fun TrophyShelfUnit() {
             GlassScreen {
                 Column(Modifier.fillMaxWidth().padding(14.dp)) {
                     Lcd(
-                        sel.title.uppercase(),
-                        color = if (sel.id in unlocked) SpectraColors.Amber else SpectraColors.PhosphorDim,
+                        lcdCase(sel.title),
+                        color = if (sel.id in unlocked) Pal.Amber else Pal.PhosphorDim,
                         size = 14.sp,
                         weight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(4.dp))
-                    Lcd(sel.hint, color = SpectraColors.Phosphor, size = 12.sp)
+                    Lcd(sel.hint, color = Pal.Phosphor, size = 12.sp)
                     Spacer(Modifier.height(4.dp))
                     Lcd(
-                        if (sel.id in unlocked) "UNLOCKED" else "LOCKED",
-                        color = if (sel.id in unlocked) SpectraColors.Green else SpectraColors.PhosphorDim,
+                        if (sel.id in unlocked) lcdCase("Unlocked") else lcdCase("Locked"),
+                        color = if (sel.id in unlocked) Pal.Green else Pal.PhosphorDim,
                         size = 11.sp
                     )
                 }
@@ -169,7 +169,7 @@ fun TrophyShelfUnit() {
                 Readout("Audio analyzed", String.format(Locale.US, "%.1f h", stats.seconds / 3600.0)),
                 Readout(
                     "Fakes caught", stats.fakes.toString(),
-                    if (stats.fakes > 0) SpectraColors.Amber else SpectraColors.Phosphor
+                    if (stats.fakes > 0) Pal.Amber else Pal.Phosphor
                 ),
                 Readout("Best DR", if (stats.bestDr >= 0f) "DR${stats.bestDr.roundToInt()}" else "—"),
                 Readout("Loudest", if (stats.loudest > -99f) "${f1(stats.loudest.toDouble())} LUFS" else "—"),
@@ -181,7 +181,7 @@ fun TrophyShelfUnit() {
             Text(
                 (if (stats.bestDrName.isNotEmpty()) "Most dynamic: ${stats.bestDrName}. " else "") +
                     (if (stats.loudestName.isNotEmpty()) "Loudest: ${stats.loudestName}." else ""),
-                color = SpectraColors.InkSoft,
+                color = Pal.InkSoft,
                 fontSize = 12.sp,
                 lineHeight = 16.sp
             )
@@ -214,14 +214,14 @@ fun TrophyToastHost(modifier: Modifier = Modifier) {
     ) {
         val t = shown
         if (t != null) {
-            RackPanel("Trophy unlocked", lamp = SpectraColors.Green) {
+            RackPanel("Trophy unlocked", lamp = Pal.Green) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Canvas(Modifier.size(56.dp)) { drawMedal(t.tier, true) }
                     Spacer(Modifier.width(14.dp))
                     Column {
-                        Engraved(t.title.uppercase(), size = 14.sp, spacing = 1.sp, color = SpectraColors.Ink)
+                        Engraved(lcdCase(t.title), size = 14.sp, spacing = 1.sp, color = Pal.Ink)
                         Spacer(Modifier.height(2.dp))
-                        Text(t.hint, color = SpectraColors.InkSoft, fontSize = 12.sp, lineHeight = 16.sp)
+                        Text(t.hint, color = Pal.InkSoft, fontSize = 12.sp, lineHeight = 16.sp)
                     }
                 }
             }

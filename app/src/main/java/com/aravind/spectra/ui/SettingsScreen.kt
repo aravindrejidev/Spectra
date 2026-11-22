@@ -56,7 +56,9 @@ import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aravind.spectra.engage.Trophies
 import com.aravind.spectra.settings.AppSettings
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.ModernColors
+import com.aravind.spectra.ui.theme.Pal
+import com.aravind.spectra.ui.theme.isModernUi
 import com.aravind.spectra.update.UpdateViewModel
 import java.io.File
 import java.util.Calendar
@@ -155,6 +157,11 @@ private fun HomePage(onClose: () -> Unit, go: (Page) -> Unit) {
 @Composable
 private fun AppearancePage(back: () -> Unit) {
     PageHeader("Appearance", back)
+    RackPanel("Interface style") {
+        StylePicker()
+        Spacer(Modifier.height(10.dp))
+        RowSub("Modern is the default. Classic is the original brushed-metal look. Switch any time, nothing else changes.")
+    }
     RackPanel("Motion & feedback") {
         SwitchRow("Reduce motion", "Turns off sliding panels, header shine, pulsing lamps and scan effects.", AppSettings.reduceMotion) {
             AppSettings.reduceMotion = it
@@ -287,7 +294,7 @@ private fun NotificationsPage(back: () -> Unit) {
         Text(
             "While a track is analyzed or an update downloads, Android requires an ongoing progress notification so the " +
                 "work isn't stopped. It disappears when the work is done.",
-            color = SpectraColors.InkSoft,
+            color = Pal.InkSoft,
             fontSize = 13.sp,
             lineHeight = 18.sp
         )
@@ -350,7 +357,7 @@ private fun DataPage(back: () -> Unit) {
         Text(
             "Spectra analyzes audio on your phone. The network is used only to check GitHub for new versions and to " +
                 "download them. Trophies, stats and settings never leave the device.",
-            color = SpectraColors.InkSoft,
+            color = Pal.InkSoft,
             fontSize = 13.sp,
             lineHeight = 18.sp
         )
@@ -403,14 +410,25 @@ private fun AppLogo() {
         val r = size.minDimension / 2f
         val c = center
         drawCircle(
-            Brush.radialGradient(listOf(SpectraColors.Green.copy(alpha = 0.35f * glow), Color.Transparent), center = c, radius = r * 1.35f),
+            Brush.radialGradient(listOf(Pal.Cta.copy(alpha = 0.35f * glow), Color.Transparent), center = c, radius = r * 1.35f),
             r * 1.35f, c
         )
         drawCircle(
-            Brush.linearGradient(listOf(Color(0xFFF1F2F5), Color(0xFF7E848F)), start = c - Offset(r, r), end = c + Offset(r, r)),
+            Brush.linearGradient(
+                if (isModernUi) listOf(ModernColors.AccentHi, ModernColors.AccentLo) else listOf(Color(0xFFF1F2F5), Color(0xFF7E848F)),
+                start = c - Offset(r, r),
+                end = c + Offset(r, r)
+            ),
             r * 0.95f, c
         )
-        drawCircle(Brush.radialGradient(listOf(Color(0xFF14201B), Color(0xFF040605)), center = c, radius = r), r * 0.78f, c)
+        drawCircle(
+            Brush.radialGradient(
+                if (isModernUi) listOf(Color(0xFF17171C), Color(0xFF08080B)) else listOf(Color(0xFF14201B), Color(0xFF040605)),
+                center = c,
+                radius = r
+            ),
+            r * 0.78f, c
+        )
         val heights = floatArrayOf(0.3f, 0.55f, 0.85f, 0.65f, 0.95f, 0.5f, 0.35f)
         val bw = r * 0.15f
         val gap = r * 0.06f
@@ -418,7 +436,7 @@ private fun AppLogo() {
         for (h in heights) {
             val bh = r * h
             drawRoundRect(
-                SpectraColors.Phosphor.copy(alpha = 0.6f + 0.4f * glow),
+                Pal.Plot.copy(alpha = 0.6f + 0.4f * glow),
                 Offset(x, c.y - bh / 2f), Size(bw, bh), CornerRadius(bw / 2f)
             )
             x += bw + gap
@@ -431,7 +449,11 @@ private fun VersionChip(text: String) {
     Box(
         Modifier
             .clip(RoundedCornerShape(50))
-            .background(Brush.verticalGradient(listOf(Color(0xFF0C1411), Color(0xFF030504))))
+            .background(
+                Brush.verticalGradient(
+                    if (isModernUi) listOf(Color(0xFF2A1015), Color(0xFF1A0A0E)) else listOf(Color(0xFF0C1411), Color(0xFF030504))
+                )
+            )
             .padding(horizontal = 16.dp, vertical = 6.dp)
     ) { Lcd(text, size = 13.sp) }
 }
@@ -442,10 +464,14 @@ private fun Avatar(letter: String) {
         Modifier
             .size(46.dp)
             .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(Color(0xFFF1F2F5), Color(0xFF8F95A0)))),
+            .background(
+                Brush.linearGradient(
+                    if (isModernUi) listOf(ModernColors.AccentHi, ModernColors.AccentLo) else listOf(Color(0xFFF1F2F5), Color(0xFF8F95A0))
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Text(letter, color = SpectraColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(letter, color = Pal.Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -464,13 +490,13 @@ private fun AboutPage(back: () -> Unit, go: (Page) -> Unit) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             AppLogo()
             Spacer(Modifier.height(10.dp))
-            Engraved("SPECTRA", size = 28.sp, color = SpectraColors.Ink, spacing = 3.sp, weight = FontWeight.Black)
+            Engraved("SPECTRA", size = 28.sp, color = Pal.Ink, spacing = 3.sp, weight = FontWeight.Black)
             Spacer(Modifier.height(8.dp))
             VersionChip("v$version")
             Spacer(Modifier.height(12.dp))
             Text(
                 "Audio forensics for your phone: spectrogram, loudness, true peak and fake-lossless detection, all on the device.",
-                color = SpectraColors.InkSoft,
+                color = Pal.InkSoft,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
                 textAlign = TextAlign.Center
@@ -511,7 +537,7 @@ private fun AboutPage(back: () -> Unit, go: (Page) -> Unit) {
 
     Text(
         "© ${Calendar.getInstance().get(Calendar.YEAR)} $DEV_NAME · build $build",
-        color = Color(0xFFB9A58F),
+        color = Pal.Footer,
         fontSize = 12.sp,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp)
@@ -533,9 +559,9 @@ private fun MeetPage(back: () -> Unit) {
             "Reports as text, image or PDF"
         ).forEach {
             Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                Led(SpectraColors.Green, true, 9.dp)
+                Led(Pal.Green, true, 9.dp)
                 Spacer(Modifier.width(12.dp))
-                Text(it, color = SpectraColors.Ink, fontSize = 14.sp, lineHeight = 19.sp, modifier = Modifier.weight(1f))
+                Text(it, color = Pal.Ink, fontSize = 14.sp, lineHeight = 19.sp, modifier = Modifier.weight(1f))
             }
         }
     }
@@ -543,7 +569,7 @@ private fun MeetPage(back: () -> Unit) {
         Text(
             "Spectra decodes your track with FFmpeg and measures it in a single pass: an FFT for the spectrogram, " +
                 "ITU-R BS.1770 loudness, 4x oversampled true peak, clipping and dynamic range. Everything stays on your phone.",
-            color = SpectraColors.InkSoft,
+            color = Pal.InkSoft,
             fontSize = 14.sp,
             lineHeight = 20.sp
         )
@@ -551,7 +577,7 @@ private fun MeetPage(back: () -> Unit) {
         Text(
             "The authenticity check looks for the fingerprints lossy encoders leave behind, such as a hard low-pass edge, " +
                 "and says how strong the evidence is. It can show that a file looks lossy, but it can't prove a file is genuine.",
-            color = SpectraColors.InkSoft,
+            color = Pal.InkSoft,
             fontSize = 14.sp,
             lineHeight = 20.sp
         )

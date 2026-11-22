@@ -26,14 +26,17 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.unit.dp
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.ModernColors
+import com.aravind.spectra.ui.theme.Pal
+import com.aravind.spectra.ui.theme.isModernUi
 import kotlin.math.PI
 import kotlin.math.sin
 
 /** Metal badge with two chevrons that float upward and a breathing glow. */
 @Composable
-fun UpdateBadge(modifier: Modifier = Modifier, color: Color = SpectraColors.Green) {
+fun UpdateBadge(modifier: Modifier = Modifier, color: Color = Pal.Cta) {
     val t = rememberInfiniteTransition(label = "badge")
     val float by t.animateFloat(
         0f, 1f,
@@ -52,14 +55,19 @@ fun UpdateBadge(modifier: Modifier = Modifier, color: Color = SpectraColors.Gree
             Brush.radialGradient(listOf(color.copy(alpha = 0.5f * glow), Color.Transparent), center = c, radius = r * 1.5f),
             r * 1.5f, c
         )
-        drawCircle(
-            Brush.linearGradient(listOf(Color(0xFFF1F2F5), Color(0xFF8F95A0)), start = c - Offset(r, r), end = c + Offset(r, r)),
-            r * 0.92f, c
-        )
-        drawCircle(
-            Brush.radialGradient(listOf(Color(0xFF14201B), Color(0xFF050807)), center = c, radius = r),
-            r * 0.72f, c
-        )
+        if (isModernUi) {
+            drawCircle(Color(0xFF17171C), r * 0.92f, c)
+            drawCircle(color.copy(alpha = 0.55f + 0.35f * glow), r * 0.92f, c, style = Stroke(2.dp.toPx()))
+        } else {
+            drawCircle(
+                Brush.linearGradient(listOf(Color(0xFFF1F2F5), Color(0xFF8F95A0)), start = c - Offset(r, r), end = c + Offset(r, r)),
+                r * 0.92f, c
+            )
+            drawCircle(
+                Brush.radialGradient(listOf(Color(0xFF14201B), Color(0xFF050807)), center = c, radius = r),
+                r * 0.72f, c
+            )
+        }
         val lift = (float - 0.5f) * r * 0.22f
         for (k in 0..1) {
             val y = c.y + r * 0.2f - k * r * 0.34f + lift
@@ -74,7 +82,7 @@ fun UpdateBadge(modifier: Modifier = Modifier, color: Color = SpectraColors.Gree
                 style = Stroke(r * 0.12f, cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
         }
-        drawCircle(Color.Black.copy(alpha = 0.5f), r * 0.92f, c, style = Stroke(1.dp.toPx()))
+        if (!isModernUi) drawCircle(Color.Black.copy(alpha = 0.5f), r * 0.92f, c, style = Stroke(1.dp.toPx()))
     }
 }
 
@@ -85,6 +93,35 @@ fun ChargeBar(progress: Float, segments: Int = 32, modifier: Modifier = Modifier
     val t = rememberInfiniteTransition(label = "chargeWave")
     val wave by t.animateFloat(0f, 1f, infiniteRepeatable(tween(1300, easing = LinearEasing)), label = "wave")
     Canvas(modifier.fillMaxWidth().height(18.dp)) {
+        if (isModernUi) {
+            val barH = 8.dp.toPx()
+            val y = (size.height - barH) / 2f
+            val rad = barH / 2f
+            drawRoundRect(Color.White.copy(alpha = 0.08f), Offset(0f, y), Size(size.width, barH), CornerRadius(rad))
+            val fillW = size.width * shown
+            if (fillW > 1f) {
+                drawRoundRect(
+                    Brush.horizontalGradient(
+                        listOf(ModernColors.AccentLo, ModernColors.AccentHi),
+                        startX = 0f,
+                        endX = if (fillW > 2f) fillW else 2f
+                    ),
+                    Offset(0f, y), Size(fillW, barH), CornerRadius(rad)
+                )
+                val hx = wave * (fillW + 40.dp.toPx()) - 20.dp.toPx()
+                clipRect(0f, y, fillW, y + barH) {
+                    drawRect(
+                        Brush.horizontalGradient(
+                            listOf(Color.Transparent, Color.White.copy(alpha = 0.55f), Color.Transparent),
+                            startX = hx - 20.dp.toPx(),
+                            endX = hx + 20.dp.toPx()
+                        ),
+                        Offset(0f, y), Size(fillW, barH)
+                    )
+                }
+            }
+            return@Canvas
+        }
         val gap = 2.dp.toPx()
         val segW = (size.width - gap * (segments - 1)) / segments
         val lit = shown * segments
@@ -94,7 +131,7 @@ fun ChargeBar(progress: Float, segments: Int = 32, modifier: Modifier = Modifier
             val brightness = if (fill > 0f) (0.55f + 0.45f * travelling) * (0.4f + 0.6f * fill) else 0.16f
             val x = i * (segW + gap)
             drawRoundRect(
-                SpectraColors.Phosphor.shade(brightness),
+                Pal.Phosphor.shade(brightness),
                 Offset(x, 0f), Size(segW, size.height), CornerRadius(3.dp.toPx())
             )
             if (fill > 0.5f) {
@@ -109,7 +146,7 @@ fun ChargeBar(progress: Float, segments: Int = 32, modifier: Modifier = Modifier
 
 /** A glowing LED with a tick and rings spreading outward: "done". */
 @Composable
-fun SuccessPulse(modifier: Modifier = Modifier, color: Color = SpectraColors.Green) {
+fun SuccessPulse(modifier: Modifier = Modifier, color: Color = Pal.Green) {
     val t = rememberInfiniteTransition(label = "ripple")
     val p by t.animateFloat(0f, 1f, infiniteRepeatable(tween(2000, easing = LinearEasing)), label = "p")
     Canvas(modifier.size(110.dp)) {
@@ -118,6 +155,12 @@ fun SuccessPulse(modifier: Modifier = Modifier, color: Color = SpectraColors.Gre
         for (k in 0..2) {
             val f = (p + k / 3f) % 1f
             drawCircle(color.copy(alpha = (1f - f) * 0.55f), maxR * (0.35f + 0.65f * f), c, style = Stroke(2.dp.toPx()))
+        }
+        if (isModernUi) {
+            drawCircle(color.copy(alpha = 0.25f), maxR * 0.5f, c)
+            drawCircle(color, maxR * 0.34f, c)
+            drawProgressCheck(Offset(c.x - maxR * 0.34f, c.y - maxR * 0.34f), maxR * 0.68f, 1f, Color.White, maxR * 0.07f)
+            return@Canvas
         }
         drawCircle(
             Brush.radialGradient(
@@ -138,23 +181,25 @@ fun SuccessPulse(modifier: Modifier = Modifier, color: Color = SpectraColors.Gre
 
 /** A breathing halo around the main call-to-action button. */
 @Composable
-fun GlowFrame(color: Color = SpectraColors.Green, content: @Composable () -> Unit) {
+fun GlowFrame(color: Color = Pal.Cta, content: @Composable () -> Unit) {
     val t = rememberInfiniteTransition(label = "glowFrame")
     val g by t.animateFloat(
         0.12f, 0.6f,
         infiniteRepeatable(tween(1300, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "g"
     )
+    val outerR = if (isModernUi) 31.dp else 16.dp
+    val innerR = if (isModernUi) 28.5.dp else 14.dp
     Box(
         Modifier.fillMaxWidth().drawBehind {
             val pad = 5.dp.toPx()
             drawRoundRect(
                 color.copy(alpha = g * 0.28f),
-                Offset(-pad, -pad), Size(size.width + 2f * pad, size.height + 2f * pad), CornerRadius(16.dp.toPx())
+                Offset(-pad, -pad), Size(size.width + 2f * pad, size.height + 2f * pad), CornerRadius(outerR.toPx())
             )
             drawRoundRect(
                 color.copy(alpha = g),
-                Offset(-pad / 2f, -pad / 2f), Size(size.width + pad, size.height + pad), CornerRadius(14.dp.toPx()),
+                Offset(-pad / 2f, -pad / 2f), Size(size.width + pad, size.height + pad), CornerRadius(innerR.toPx()),
                 style = Stroke(2.dp.toPx())
             )
         }

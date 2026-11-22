@@ -25,7 +25,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aravind.spectra.dsp.SelfTest
 import com.aravind.spectra.dsp.TestResult
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -74,9 +74,9 @@ fun SelfTestUnit(vm: SelfTestViewModel = viewModel()) {
     val context = LocalContext.current
     val s = state
     val lamp = when (s) {
-        is SelfTestState.Idle -> SpectraColors.Amber
-        is SelfTestState.Running -> SpectraColors.Blue
-        is SelfTestState.Done -> if (s.results.all { it.pass }) SpectraColors.Green else SpectraColors.Red
+        is SelfTestState.Idle -> Pal.Amber
+        is SelfTestState.Running -> Pal.Blue
+        is SelfTestState.Done -> if (s.results.all { it.pass }) Pal.Green else Pal.Red
     }
 
     LaunchedEffect(s) {
@@ -90,7 +90,7 @@ fun SelfTestUnit(vm: SelfTestViewModel = viewModel()) {
                     "Feeds test signals with known answers through the real analyzer on this phone and checks " +
                         "loudness, true peak, clipping, dynamic range, stereo, bit depth and cutoff detection. " +
                         "Takes about one to two minutes.",
-                    color = SpectraColors.Ink,
+                    color = Pal.Ink,
                     fontSize = 13.sp,
                     lineHeight = 18.sp
                 )
@@ -100,11 +100,11 @@ fun SelfTestUnit(vm: SelfTestViewModel = viewModel()) {
             is SelfTestState.Running -> {
                 GlassScreen {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                        Lcd("TEST ${min(s.done + 1, s.total)} / ${s.total}", size = 14.sp)
+                        Lcd(lcdCase("Test ${min(s.done + 1, s.total)} / ${s.total}"), size = 14.sp)
                         Spacer(Modifier.height(6.dp))
-                        Lcd(s.current, color = SpectraColors.PhosphorDim, size = 12.sp)
+                        Lcd(s.current, color = Pal.PhosphorDim, size = 12.sp)
                         Spacer(Modifier.height(12.dp))
-                        LedLadder(s.done * 100.0 / s.total, 0.0, 100.0, segments = 30, tint = SpectraColors.Phosphor)
+                        LedLadder(s.done * 100.0 / s.total, 0.0, 100.0, segments = 30, tint = Pal.Plot)
                     }
                 }
             }
@@ -114,15 +114,15 @@ fun SelfTestUnit(vm: SelfTestViewModel = viewModel()) {
                 GlassScreen {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Lcd(
-                            if (allOk) "ALL TESTS PASSED" else "SOME TESTS FAILED",
-                            color = if (allOk) SpectraColors.Green else SpectraColors.Red,
+                            if (allOk) lcdCase("All tests passed") else lcdCase("Some tests failed"),
+                            color = if (allOk) Pal.Green else Pal.Red,
                             size = 16.sp,
                             weight = FontWeight.Bold
                         )
                         Spacer(Modifier.height(6.dp))
                         Lcd(
                             "$passed / ${s.results.size} passed in ${String.format(Locale.US, "%.1f", s.seconds)} s",
-                            color = SpectraColors.PhosphorDim,
+                            color = Pal.PhosphorDim,
                             size = 12.sp
                         )
                     }
@@ -130,13 +130,13 @@ fun SelfTestUnit(vm: SelfTestViewModel = viewModel()) {
                 Spacer(Modifier.height(10.dp))
                 for (r in s.results) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
-                        Led(if (r.pass) SpectraColors.Green else SpectraColors.Red, true, 10.dp, Modifier.padding(top = 3.dp))
+                        Led(if (r.pass) Pal.Green else Pal.Red, true, 10.dp, Modifier.padding(top = 3.dp))
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Engraved(r.name, size = 12.sp, spacing = 0.3.sp)
                             Text(
                                 "${r.measured}   (expected ${r.expected})",
-                                color = SpectraColors.Ink,
+                                color = Pal.Ink,
                                 fontSize = 12.sp,
                                 lineHeight = 16.sp
                             )

@@ -31,6 +31,14 @@ object SpectraColors {
     val Blue = Color(0xFF59B6FF)
 }
 
+private val ModernScheme = darkColorScheme(
+    primary = ModernColors.Accent,
+    background = ModernColors.BgBottom,
+    surface = ModernColors.CardBottom,
+    onBackground = ModernColors.TextHi,
+    onSurface = ModernColors.TextHi
+)
+
 private val Scheme = darkColorScheme(
     primary = SpectraColors.Phosphor,
     background = SpectraColors.WoodBottom,
@@ -41,5 +49,5 @@ private val Scheme = darkColorScheme(
 
 @Composable
 fun SpectraTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = Scheme, content = content)
+    MaterialTheme(colorScheme = if (isModernUi) ModernScheme else Scheme, content = content)
 }

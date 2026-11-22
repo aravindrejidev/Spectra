@@ -23,7 +23,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.aravind.spectra.engage.Trophies
 import com.aravind.spectra.model.UiState
-import com.aravind.spectra.ui.theme.SpectraColors
+import com.aravind.spectra.ui.theme.Pal
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -54,13 +54,13 @@ fun ShareDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
-            RackPanel("Share report", lamp = SpectraColors.Blue) {
+            RackPanel("Share report", lamp = Pal.Blue) {
                 if (busy) {
                     GlassScreen {
                         Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                            Lcd("BUILDING REPORT", size = 14.sp)
+                            Lcd(lcdCase("Building report"), size = 14.sp)
                             Spacer(Modifier.height(10.dp))
-                            Lcd("Building the full report, a few seconds…", color = SpectraColors.PhosphorDim, size = 12.sp)
+                            Lcd("Building the full report, a few seconds…", color = Pal.PhosphorDim, size = 12.sp)
                         }
                     }
                 } else {

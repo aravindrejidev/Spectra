@@ -515,7 +515,7 @@ private fun sourceBlock(s: UiState.Success, cover: Bitmap?): Block {
 }
 
 private fun verdictBlock(v: Verdict): Block {
-    val tone = sevColor(v.severity)
+    val tone = classicSevColor(v.severity)
     val pad = 28f
     val summary = layout(v.summary, tp(29f, SpectraColors.Phosphor.copy(alpha = 0.9f), mono = true), INNER_W - 2f * pad)
     val ev = v.confidence
@@ -542,7 +542,7 @@ private fun verdictBlock(v: Verdict): Block {
 
         var fy = y + gh + 26f
         for ((f, lay) in fl) {
-            led(Offset(x + 14f, fy + 16f), 11f, sevColor(f.severity))
+            led(Offset(x + 14f, fy + 16f), 11f, classicSevColor(f.severity))
             engraved(f.label.uppercase(), x + 44f, fy + 26f, 24f)
             drawLayout(lay, x + 44f, fy + 34f)
             fy += 34f + lay.height + 22f
